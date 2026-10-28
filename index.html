@@ -80,6 +80,22 @@ kbd{font-family:var(--body);background:var(--panel-2);border:1px solid var(--lin
 #msg button{background:var(--panel-2);color:var(--paper);border:2px solid var(--line);border-radius:6px;padding:8px 14px;font-size:17px}
 #msg button.pri{background:var(--brick);border-color:var(--brick)}
 
+#nameSlots{display:flex;gap:10px;justify-content:center}
+.slot{display:flex;flex-direction:column;align-items:center;gap:4px}
+.slot button{background:var(--panel-2);color:var(--paper);border:2px solid var(--line);border-radius:6px;width:52px;height:30px;font-size:14px;padding:0}
+.slot .ltr{font-family:var(--display);font-size:46px;line-height:1.1;width:52px;text-align:center;color:var(--paper);border-bottom:4px solid var(--line);cursor:pointer}
+.slot.cur .ltr{color:var(--ochre);border-color:var(--ochre)}
+#nameBox{display:flex;flex-direction:column;gap:10px;align-items:center}
+#nameBox .nhint{font-size:14px;color:var(--muted)}
+#msgBoard{margin:0;padding:0;list-style:none;counter-reset:r;display:flex;flex-direction:column;gap:2px;font-size:17px;text-align:left}
+#msgBoard li{counter-increment:r;display:grid;grid-template-columns:2em 3.6em 1fr auto;gap:8px;padding:2px 6px;border-radius:4px;font-variant-numeric:tabular-nums}
+#msgBoard li::before{content:counter(r) ".";color:var(--muted)}
+#msgBoard li b{font-family:var(--display);font-weight:400;letter-spacing:.06em}
+#msgBoard li span{color:var(--muted)}
+#msgBoard li i{font-style:normal;color:var(--ochre)}
+#msgBoard li.me{background:var(--panel-2);outline:2px solid var(--ochre)}
+#hint{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(100px + env(safe-area-inset-bottom,0px));background:rgba(29,26,43,.85);border:2px solid var(--line);border-radius:6px;padding:6px 12px;font-size:16px;text-align:center;width:max-content;max-width:calc(100% - 32px);box-sizing:border-box}
+
 /* ---------- touch ---------- */
 #touch{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;pointer-events:none;
   padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
@@ -104,6 +120,8 @@ kbd{font-family:var(--body);background:var(--panel-2);border:1px solid var(--lin
 <div id="msg" hidden role="dialog" aria-live="polite">
   <h3 id="msgTitle">Ahia!</h3>
   <p id="msgText"></p>
+  <div id="nameBox" hidden><div id="nameSlots"></div><button type="button" id="nameSave" class="pri">Salva</button><p class="nhint">Frecce o tastiera per scegliere, Invio per salvare</p></div>
+  <ol id="msgBoard" hidden></ol>
   <div class="row">
     <button type="button" id="msgRetry" class="pri">Riprova</button>
     <button type="button" id="msgNext" hidden>Prossimo livello</button>
@@ -111,9 +129,10 @@ kbd{font-family:var(--body);background:var(--panel-2);border:1px solid var(--lin
   </div>
 </div>
 
+<div id="hint" hidden>A piedi: frecce per strisciare, Spazio per un saltello, R per riprovare</div>
 <div id="touch" hidden>
   <div class="grp"><button type="button" data-k="left" aria-label="Inclina indietro">&#9664;</button><button type="button" data-k="right" aria-label="Inclina avanti">&#9654;</button></div>
-  <div class="grp"><button type="button" data-k="special">Speciale</button><button type="button" data-k="brake">Freno</button><button type="button" class="big" data-k="gas">Gas</button></div>
+  <div class="grp"><button type="button" data-k="special">Speciale</button><button type="button" data-k="jump">Salta</button><button type="button" data-k="brake">Freno</button><button type="button" class="big" data-k="gas">Gas</button></div>
 </div>
 
 <aside id="menu">
@@ -133,8 +152,10 @@ kbd{font-family:var(--body);background:var(--panel-2);border:1px solid var(--lin
     <dl class="keys">
       <dt><kbd>&uarr;</kbd> <kbd>&darr;</kbd></dt><dd>Gas, freno e retromarcia</dd>
       <dt><kbd>&larr;</kbd> <kbd>&rarr;</kbd></dt><dd>Inclina indietro e avanti</dd>
-      <dt><kbd>Spazio</kbd></dt><dd>Mossa speciale del veicolo</dd>
+      <dt><kbd>Spazio</kbd></dt><dd>Salta</dd>
+      <dt><kbd>X</kbd> <kbd>Shift</kbd></dt><dd>Mossa speciale del veicolo</dd>
       <dt><kbd>Z</kbd></dt><dd>Lanciati giù dal veicolo</dd>
+      <dt>A piedi</dt><dd>Se cadi ma sei vivo, con le frecce strisci fino al traguardo</dd>
       <dt><kbd>R</kbd> <kbd>Esc</kbd></dt><dd>Riprova, torna al menu</dd>
       <dt><kbd>M</kbd></dt><dd>Audio sì/no</dd>
     </dl>
@@ -179,9 +200,9 @@ const VEHS = {
   ragazza: {name: 'Ragazza', special: 'Turbo', sdesc: 'lei scatta a tutta velocità', color: '#e86a9a', hideWheels: true,
     ch: {w: 26, h: 44}, dens: 0.004, wheels: [{x: -18, y: 50, r: 10, drive: true}, {x: 18, y: 50, r: 10, drive: true}],
     speed: 11, torque: 0.45, seat: {x: 0, y: -28}, hand: {x: 12, y: -40}, foot: {x: 12, y: 2}, lean: 0.004, cd: 4, balance: 0.06},
-  bici: {name: 'Bici da corsa', special: 'Salto', sdesc: 'un salto da fermo o in corsa', color: '#d7263d',
+  bici: {name: 'Bici da corsa', special: 'Muscoli', sdesc: 'per 4 secondi niente gli si rompe', color: '#d7263d',
     ch: {w: 56, h: 6}, dens: 0.003, wheels: [{x: -30, y: 18, r: 17, drive: true}, {x: 30, y: 18, r: 17}],
-    speed: 13, torque: 0.4, seat: {x: -12, y: -17}, hand: {x: 25, y: -19}, foot: {x: 0, y: 14}, bb: {x: 0, y: 14}, lean: 0.005, cd: 1},
+    speed: 13, torque: 0.4, seat: {x: -12, y: -17}, hand: {x: 25, y: -19}, foot: {x: 0, y: 14}, bb: {x: 0, y: 14}, lean: 0.005, cd: 9},
   eauto: {name: 'Auto elettrica', special: 'Raddrizza', sdesc: 'rimette l\'auto sulle ruote', color: '#2f6fd6',
     ch: {w: 104, h: 24}, dens: 0.0035, wheels: [{x: -36, y: 18, r: 15, drive: true}, {x: 38, y: 18, r: 15, drive: true}],
     speed: 13, torque: 0.5, seat: {x: -6, y: -4}, hand: {x: 16, y: -22}, foot: {x: 30, y: 4}, lean: 0.003, cd: 5},
@@ -192,6 +213,7 @@ const VEHS = {
 
 const TORSO = 32, HEADR = 10, UARM = 16, LARM = 16, THIGH = 19, SHIN = 19;
 const GROUP = -7;
+const CAT_RIDER = 0x0002, RIDER_ONLY = {category: 0x0004, mask: 0x0002}; // hazards that only hurt people, like in Happy Wheels
 
 /* ================= track builder ================= */
 class Track {
@@ -231,23 +253,44 @@ const LEVELS = [
       L.deco(-260, 'porta', 0.85); L.deco(-520, 'palazzo', 0.6, {w: 170, h: 150, c: '#d9a35b'});
       L.sign(230, t.y, 'Via XX Settembre');
       t.bumps(480, 12, 5);
-      t.flat(140); L.crates(980, t.y, 1, 1);
-      t.flat(260);
+      t.flat(200); L.crates(t.x - 100, t.y, 1, 1);
       L.deco(700, 'palazzo', 0.6, {w: 200, h: 170, c: '#e1c18e'}); L.deco(930, 'palazzo', 0.6, {w: 150, h: 200, c: '#c97b4a', arcade: true});
-      t.hill(320, 70); t.flat(220);
-      L.deco(1380, 'museo', 0.6);
-      t.r(130, -34); t.r(40, 34); t.flat(260); L.crates(t.x - 90, t.y, 2, 2);
-      L.deco(1900, 'campanile', 0.55); L.deco(2050, 'duomo', 0.6);
-      L.sign(2010, t.y, 'Cattedrale');
-      t.stairs(4, 70, 18); t.flat(220);
-      L.deco(2500, 'palazzo', 0.6, {w: 180, h: 160, c: '#d6b07a'});
-      t.bumps(420, 10, 6);
-      L.barrel(t.x + 20, t.y); L.barrel(t.x + 60, t.y); t.hill(300, -50); L.crates(t.x - 150, groundAt2(t, t.x - 150), 3, 1); t.flat(260);
-      L.deco(3200, 'palazzo', 0.6, {w: 230, h: 180, c: '#cf9a5f', arcade: true}); L.deco(3460, 'palazzo', 0.6, {w: 160, h: 150, c: '#e6cfa0'});
-      t.hill(260, 40); t.flat(900);
-      L.sign(3780, t.y, 'Piazza Torre di Berta');
-      L.deco(3950, 'laudi', 0.6);
-      for (const x of [650, 1250, 1950, 2500, 3250, 3700]) L.npc(x, groundAt2(t, x), 'kid');
+      L.pots([1150, 1290]);
+      t.flat(400);
+      L.deco(1250, 'lamp', 1);
+      t.hill(320, 70); t.flat(200);
+      L.deco(1500, 'museo', 0.6);
+      t.r(130, -34); t.r(40, 34); t.flat(200); L.crates(t.x - 90, t.y, 2, 2);
+      L.deco(2100, 'palazzo', 0.6, {w: 180, h: 190, c: '#d6b07a'});
+      t.stairs(4, 70, 18); t.flat(250);
+      L.deco(2700, 'sanfrancesco', 0.6); L.sign(2620, t.y, 'Piazza San Francesco');
+      L.sign(t.x - 20, t.y, 'Lavori in corso');
+      L.gap(t, 190, 60, 'spikes');
+      L.deco(t.x - 300, 'cones', 1);
+      L.pots([3550, 3680, 3800]);
+      t.bumps(500, 12, 6);
+      L.deco(3500, 'palazzo', 0.6, {w: 230, h: 180, c: '#cf9a5f', arcade: true}); L.deco(3780, 'palazzo', 0.6, {w: 160, h: 150, c: '#e6cfa0'});
+      L.barrel(t.x + 20, t.y); L.barrel(t.x + 60, t.y);
+      t.hill(300, -50); t.flat(300);
+      L.deco(4300, 'lamp', 1);
+      t.hill(260, 40); t.flat(300);
+      L.deco(4800, 'servi', 0.6); L.sign(4850, t.y, 'Santa Maria dei Servi');
+      L.gap(t, 210, 70, 'spikes');
+      t.flat(200);
+      for (let i = 0; i < 4; i++) { t.r(0, -8); t.flat(50); }
+      t.flat(300);
+      L.deco(6100, 'campanile', 0.55); L.deco(6260, 'duomo', 0.6); L.sign(6200, t.y, 'Cattedrale');
+      L.bell(t.x - 150, t.y, 190, 2.4, 0.85);
+      t.stairs(3, 60, 15); t.flat(250); L.crates(t.x - 120, t.y, 2, 1);
+      L.pots([6800, 6900]);
+      t.hill(400, 90); t.flat(200);
+      L.deco(7100, 'palazzo', 0.6, {w: 200, h: 180, c: '#d9a35b'});
+      t.r(130, -30); t.r(40, 30); t.flat(300);
+      t.hill(300, -65);
+      t.flat(1100);
+      L.sign(t.x - 1000, t.y, 'Piazza Torre di Berta');
+      L.deco(t.x - 800, 'laudi', 0.6);
+      for (const x of [650, 1250, 1950, 2500, 3250, 3700, 4400, 5100, 5900, 6600, 7400, 7900]) L.npc(x, groundAt2(t, x), 'kid');
       L.finishAt(t.x - 600, t.y);
     }},
   {id: 'palio', name: 'Palio della Balestra', place: 'Piazza Torre di Berta, seconda domenica di settembre',
@@ -261,22 +304,40 @@ const LEVELS = [
       L.deco(-60, 'palazzo', 0.6, {w: 160, h: 190, c: '#c97b4a', banners: true});
       t.flat(500); L.barrel(620, t.y); L.barrel(660, t.y); L.barrel(640, t.y - 32);
       L.deco(500, 'laudi', 0.6, {banners: true});
-      L.crossbow(1350, t.y, 2);
-      L.sign(1000, t.y, 'Torre di Berta, distrutta nel 1944');
-      t.flat(500);
-      L.deco(1250, 'palazzo', 0.6, {w: 210, h: 180, c: '#e1c18e', banners: true});
-      t.r(160, -60); t.flat(180); L.crates(1700, t.y, 1, 2); t.r(0, 60);
-      t.flat(400); L.barrel(2140, t.y); L.barrel(2190, t.y);
-      L.crossbow(2600, t.y, 1.8);
-      L.deco(2000, 'palazzo', 0.6, {w: 180, h: 160, c: '#d6b07a', banners: true});
-      t.hump(260, 40); t.flat(300);
-      L.crates(2620, t.y, 2, 2);
-      t.r(0, -8); t.flat(50); t.r(0, -8); t.flat(50); t.r(0, -8); t.flat(50); t.r(0, -8); t.flat(260);
-      L.crossbow(3500, t.y, 1.6);
-      L.deco(3000, 'duomo', 0.6); L.deco(3180, 'campanile', 0.55);
-      t.bumps(400, 8, 6); t.flat(300); L.barrel(3550, t.y);
-      t.flat(900);
-      L.deco(3900, 'target', 1);
+      L.crossbow(1300, t.y, 2);
+      t.flat(400);
+      L.spinner(1050, t.y, 2.2);
+      L.sign(950, t.y, 'Torre di Berta, distrutta nel 1944');
+      t.r(160, -60); t.flat(180); L.crates(t.x - 60, t.y, 1, 2); t.r(0, 60);
+      t.flat(300);
+      L.deco(1500, 'palazzo', 0.6, {w: 210, h: 180, c: '#e1c18e', banners: true});
+      L.bell(t.x - 120, t.y, 200, 2.6, 0.9);
+      L.crossbow(2350, t.y, 1.8);
+      t.hump(260, 40); t.flat(250);
+      L.spinner(t.x - 120, t.y, -2.6);
+      L.gap(t, 200, 60, 'spikes');
+      t.flat(200); L.barrel(t.x - 120, t.y); L.barrel(t.x - 80, t.y);
+      for (let i = 0; i < 4; i++) { t.r(0, -8); t.flat(50); }
+      t.flat(400);
+      L.deco(3300, 'duomo', 0.6); L.deco(3480, 'campanile', 0.55);
+      L.spinner(t.x - 200, t.y, 2.8);
+      L.crossbow(4000, t.y, 1.6);
+      t.bumps(400, 8, 6); t.hill(300, -32);
+      t.flat(300); L.bell(t.x - 150, t.y, 200, 2.2, 1.0);
+      L.gap(t, 220, 80, null);
+      t.flat(400);
+      L.deco(5500, 'palazzo', 0.6, {w: 180, h: 160, c: '#d6b07a', banners: true});
+      L.spinner(t.x - 250, t.y, -2.4); L.spinner(t.x - 80, t.y, 2.4);
+      L.crossbow(6100, t.y, 1.5);
+      t.hill(350, 80); t.flat(200);
+      const top = t.x;
+      L.trigger(top - 400, () => { for (let i = 0; i < 3; i++) L.spawnBall(top + 40 + i * 40, groundAt(top) - 40, 16, 'barrel', -3); });
+      t.hill(350, -80);
+      t.flat(300);
+      L.crossbow(7200, t.y, 1.4);
+      t.bumps(300, 6, 6);
+      t.flat(1100);
+      L.deco(t.x - 700, 'target', 1);
       L.finishAt(t.x - 650, t.y);
     }},
   {id: 'fortezza', name: 'Fortezza Medicea', place: 'Bastioni e fossato della fortezza del Sangallo',
@@ -288,9 +349,9 @@ const LEVELS = [
       L.deco(-200, 'cypress', 0.7); L.deco(-120, 'cypress', 0.7);
       L.sign(220, t.y, 'Fortezza Medicea');
       t.bumps(300, 6, 5);
-      const climbX = t.x;
+      const c1 = t.x;
       t.hill(520, 160);
-      L.trigger(climbX - 100, () => { for (let i = 0; i < 3; i++) L.spawnBall(t.x + 120 + i * 50, t.y - 30 - i * 8, 15, 'cannon', -3 - i); });
+      L.trigger(c1 - 100, () => { for (let i = 0; i < 3; i++) L.spawnBall(t.x + 120 + i * 50, t.y - 30 - i * 8, 15, 'cannon', -3 - i); });
       t.flat(260);
       L.deco(1000, 'fortezza', 0.6);
       L.bricks(t.x + 60, t.y, 3, 7);
@@ -299,14 +360,31 @@ const LEVELS = [
       L.sign(t.x + 40, t.y, 'Il fossato');
       t.flat(100); const w1 = t.x; t.r(150, 80); t.flat(260); t.r(240, -80); const w2 = t.x;
       L.water(w1 - 10, w2 + 10, t.y - 6);
+      L.cannon(3900, groundAt2(t, w2) - 120 - 0, 2.6);
       t.flat(240);
       L.deco(2600, 'fortezza', 0.6, {garitta: true});
       L.crates(t.x - 80, t.y, 1, 3);
       t.hill(420, 120); t.flat(160);
       L.spikes(t.x - 120, t.y, 60);
       t.r(140, -30); t.r(40, 30); t.flat(300);
-      t.hill(300, -120);
-      L.deco(3400, 'cypress', 0.7); L.deco(3460, 'pine', 0.7);
+      L.sign(t.x - 60, t.y, 'Palizzata');
+      L.gap(t, 200, 80, 'spikes');
+      t.flat(200);
+      const c2 = t.x;
+      t.hill(500, 200);
+      L.trigger(c2 - 80, () => { for (let i = 0; i < 4; i++) L.spawnBall(t.x + 100 + i * 45, t.y - 30 - i * 6, 15, 'cannon', -2.5 - i * 0.6); });
+      t.flat(300); L.bricks(t.x - 160, t.y, 3, 8);
+      L.deco(5400, 'fortezza', 0.6, {garitta: true});
+      L.cannon(t.x + 650, t.y - 0, 2.2);
+      t.flat(300);
+      t.hill(400, -200);
+      L.sign(t.x - 40, t.y, 'Secondo fossato');
+      L.gap(t, 280, 90, 'water');
+      t.flat(300);
+      L.cannon(t.x + 700, t.y, 2.0);
+      t.hill(400, -120);
+      L.deco(7700, 'cypress', 0.7); L.deco(7760, 'pine', 0.7);
+      t.flat(400); L.crates(t.x - 200, t.y, 2, 2);
       t.flat(900);
       L.finishAt(t.x - 650, t.y);
     }},
@@ -319,8 +397,7 @@ const LEVELS = [
       L.deco(-150, 'buitoni', 0.6);
       L.sign(230, t.y, 'Pastificio Buitoni');
       L.conveyor(450, t.y, 360, 7);
-      t.flat(500);
-      t.flat(300);
+      t.flat(800);
       L.seesaw(1300, t.y, 320);
       t.flat(450);
       L.deco(1500, 'buitoni', 0.6, {chimney: false});
@@ -328,22 +405,39 @@ const LEVELS = [
       t.flat(260);
       L.press(2090, t.y, 2.2, 1.1);
       t.flat(260);
-      L.conveyor(2380, t.y, 300, -4);
+      L.sign(t.x - 40, t.y, 'Pentolone del sugo');
+      L.gap(t, 190, 70, 'sauce');
+      L.conveyor(t.x + 70, t.y, 300, -4);
       t.flat(380);
-      const hillX = t.x;
+      const h1 = t.x;
       t.hill(360, 110); t.flat(200);
-      L.trigger(hillX - 150, () => { L.spawnBall(t.x + 60, t.y - 40, 26, 'pastaroll', -2); L.spawnBall(t.x + 160, t.y - 40, 26, 'pastaroll', -2); });
+      L.trigger(h1 - 150, () => { L.spawnBall(t.x + 60, t.y - 40, 26, 'pastaroll', -2); L.spawnBall(t.x + 160, t.y - 40, 26, 'pastaroll', -2); });
       L.pasta(t.x - 60, t.y, 1, 3);
       t.hill(300, -110); t.flat(200);
       L.deco(3300, 'buitoni', 0.6);
       L.spikes(t.x - 40, t.y, 40);
       t.r(120, -30); t.r(40, 30);
-      t.flat(1000);
+      t.flat(140); L.press(t.x + 60, t.y, 1.9, 0.4); L.press(t.x + 240, t.y, 1.9, 1.3);
+      t.flat(300);
+      L.seesaw(t.x + 250, t.y, 340);
+      t.flat(500);
+      L.deco(4700, 'buitoni', 0.6, {chimney: false});
+      L.gap(t, 210, 70, 'sauce');
+      L.conveyor(t.x + 60, t.y, 400, 7);
+      t.flat(500);
+      L.press(t.x + 80, t.y, 2.0, 0); L.press(t.x + 280, t.y, 2.0, 0.65); L.press(t.x + 480, t.y, 2.0, 1.3);
+      t.flat(600);
+      const h2 = t.x;
+      t.hill(300, 90); t.flat(200);
+      L.trigger(h2 - 150, () => { for (let i = 0; i < 3; i++) L.spawnBall(t.x + 40 + i * 70, t.y - 40, 24, 'pastaroll', -2.5); });
+      t.hill(300, -90);
+      L.deco(t.x + 200, 'buitoni', 0.6);
+      t.flat(1100);
       L.sign(t.x - 820, t.y, 'Spedizioni');
-      for (const x of [650, 1000, 1650, 2300, 2950, 3800, 3950]) L.npc(x, groundAt2(t, x), 'zombie');
+      for (const x of [650, 1000, 1650, 2300, 2800, 3200, 3700, 4300, 4650, 5300, 5900, 6450, 6900, 7300, 7700, 8000]) L.npc(x, groundAt2(t, x), 'zombie');
       L.finishAt(t.x - 650, t.y);
     }},
-  {id: 'diga', name: 'Diga di Montedoglio', place: 'Il lago e lo sfioratore sul Tevere',
+  {id: 'diga', name: 'Diga di Montedoglio', place: 'Il lago, lo sfioratore e il Tevere',
     sky: ['#d8708a', '#f6c48f'], mount: '#8e6f8f', mount2: '#5c6e45',
     ground: {fill: '#5d4630', top: '#6f9a3e', dash: '#8fb954'},
     build(L) {
@@ -357,19 +451,28 @@ const LEVELS = [
       const s1 = t.x; t.r(180, 80); t.flat(600); t.r(260, -80); const s2 = t.x;
       L.water(s1 - 10, s2 + 10, t.y - 8);
       t.flat(200);
+      L.sign(t.x - 40, t.y, 'Torrente');
+      L.gap(t, 240, 60, 'water');
+      t.flat(200);
       t.hill(380, 130);
       L.sign(t.x + 40, t.y, 'Coronamento della diga');
-      t.flat(560);
-      L.deco(t.x - 300, 'diga', 0.6);
-            L.sign(t.x - 20, t.y, 'Sfioratore');
+      t.flat(700);
+      L.deco(t.x - 350, 'diga', 0.6);
+      L.sign(t.x - 20, t.y, 'Sfioratore');
       t.hill(520, -330, 18);
       t.hill(200, 34, 8);
       t.r(0, 100);
       t.hill(1000, -160, 16);
       L.deco(t.x - 300, 'pine', 0.7);
-      t.flat(900);
-      L.sign(t.x - 840, t.y, 'Fiume Tevere');
-      for (const x of [550, 1000, 2350, 2950, 3250, 5150]) L.npc(x, groundAt2(t, x), 'tramp');
+      t.flat(300);
+      L.sign(t.x - 40, t.y, 'Fiume Tevere');
+      L.gap(t, 280, 70, 'water');
+      t.flat(200);
+      t.hump(400, 60); t.flat(150); L.hay(t.x - 70, t.y);
+      t.hump(300, 40);
+      L.deco(t.x + 100, 'cypress', 0.7); L.deco(t.x + 160, 'cypress', 0.7);
+      t.flat(1100);
+      for (const x of [550, 1000, 2650, 3300, 3700, 4000, 4150, 6100, 7100, 7700, 8100]) L.npc(x, groundAt2(t, x), 'tramp');
       L.finishAt(t.x - 650, t.y);
     }}
 ];
@@ -392,7 +495,7 @@ window.addEventListener('resize', resize); resize();
 
 /* ================= world building ================= */
 // debris colours for props that shatter when a rider smashes into them
-const BREAK = {crate: ['#b5803f', '#6e4a1f'], pastabox: ['#2b5aa8', '#f4ead6', '#f0cf6b'], hay: ['#e2bf5a', '#a8862f'], barrel: ['#7a4a26', '#6d1030', '#8e1b3c']};
+const BREAK = {brick: ['#b8512f', '#d9c8a8'], pot: ['#c4663a', '#4f7a3a', '#d93a3a'], crate: ['#b5803f', '#6e4a1f'], pastabox: ['#2b5aa8', '#f4ead6', '#f0cf6b'], hay: ['#e2bf5a', '#a8862f'], barrel: ['#7a4a26', '#6d1030', '#8e1b3c']};
 
 function makeBuilder(engine) {
   const world = engine.world;
@@ -425,10 +528,37 @@ function makeBuilder(engine) {
   L.spawnBall = (x, y, r, kind, vx) => { const b = L.ball(x, y, r, kind, {density: kind === 'cannon' ? 0.006 : 0.0015, friction: 0.8, restitution: 0.1}); Body.setVelocity(b, {x: vx, y: 0}); return b; };
   L.floats = (x, y, n, gap) => { for (let i = 0; i < n; i++) L.box(x + i * gap, y, 110, 22, 'log', {density: 0.0009, friction: 1}); };
   L.spikes = (x, gy, w) => {
-    const b = addB(Bodies.rectangle(x + w / 2, gy - 6, w, 12, {isStatic: true}));
+    const b = addB(Bodies.rectangle(x + w / 2, gy - 6, w, 12, {isStatic: true, collisionFilter: RIDER_ONLY}));
     b.plugin.kind = 'spikes'; b.plugin.w = w; b.plugin.h = 12; L.dyn.push(b);
   };
-  L.water = (x1, x2, y) => L.waters.push({x1, x2, y});
+  L.water = (x1, x2, y, o = {}) => L.waters.push({x1, x2, y, sauce: !!o.sauce});
+  L.hints = [];
+  // kicker ramp, a pit (spikes, boiling sauce, water or nothing) and a landing at kicker height
+  L.gap = (t, w, d, fill) => {
+    t.r(110, -28);
+    const x0 = t.x, y0 = t.y;
+    t.r(0, 28 + d); t.flat(w);
+    t.r(fill === 'water' ? 230 : 170, -(28 + d)); // steep way out: falling in costs time, not the run
+    t.flat(80); t.hill(140, -28, 8);
+    const bottom = y0 + 28 + d;
+    if (fill === 'spikes') L.spikes(x0 + 4, bottom, w - 8);
+    if (fill === 'sauce') L.water(x0, x0 + w, bottom - d * 0.75, {sauce: true});
+    if (fill === 'water') L.water(x0, x0 + w, bottom - d * 0.7);
+    L.hints.push(x0 - 70);
+  };
+  L.pots = xs => { for (const x of xs) L.trigger(x - 270, () => { const b = L.box(x + rnd(-20, 20), groundAt(x) - 380, 16, 18, 'pot', {density: 0.003}); Body.setVelocity(b, {x: 0, y: 2}); }); };
+  L.spinner = (x, gy, w) => { // flag thrower: a spinning flag pole you have to time
+    const b = addB(Bodies.rectangle(x, gy - 170, 124, 7, {isStatic: true, collisionFilter: RIDER_ONLY}));
+    b.plugin.kind = 'spinner'; b.plugin.w = 124; b.plugin.h = 7; b.plugin.gy = gy; L.dyn.push(b);
+    L.movers.push({type: 'spin', b, w, phase: rnd(0, TAU)});
+  };
+  L.bell = (x, gy, len, period, amp) => { // swinging bell hung from a wooden beam
+    const piv = {x, y: gy - len - 75};
+    const b = addB(Bodies.circle(x, piv.y + len, 22, {isStatic: true, collisionFilter: RIDER_ONLY}));
+    b.plugin.kind = 'bell'; b.plugin.r = 22; b.plugin.piv = piv; b.plugin.gy = gy; L.dyn.push(b);
+    L.movers.push({type: 'bell', b, piv, len, period, amp, phase: rnd(0, TAU)});
+  };
+  L.cannon = (x, _y, period) => L.spawners.push({type: 'cannon', x, period, t: period * 0.5});
   L.conveyor = (x, gy, w, speed) => {
     const b = addB(Bodies.rectangle(x + w / 2, gy + 4, w, 16, {isStatic: true, friction: 1}));
     b.plugin.kind = 'conveyor'; b.plugin.w = w; b.plugin.h = 16; b.plugin.conveyor = speed; L.dyn.push(b);
@@ -445,9 +575,9 @@ function makeBuilder(engine) {
   L.press = (x, gy, period, phase) => {
     const b = addB(Bodies.rectangle(x, gy - 200, 110, 70, {isStatic: true, friction: 0.5}));
     b.plugin.kind = 'press'; b.plugin.w = 110; b.plugin.h = 70; L.dyn.push(b);
-    L.movers.push({b, x, top: gy - 230, bottom: gy - 36, period, phase});
+    L.movers.push({type: 'press', b, x, top: gy - 230, bottom: gy - 36, period, phase});
   };
-  L.crossbow = (x, gy, period) => L.spawners.push({x, y: gy, period, t: period * 0.6});
+  L.crossbow = (x, gy, period) => L.spawners.push({type: 'bow', x, y: gy, period, t: period * 1.3});
   L.npc = (x, gy, type) => {
     const h = NPC[type].h;
     const b = addB(Bodies.rectangle(x, gy - h / 2 - 8, 18, h, {density: 0.0012, friction: 0.4, chamfer: {radius: 6}}));
@@ -529,7 +659,7 @@ function buildPlayer(world, ch, ox, oy) {
   const neck = add(hip, mul(up, TORSO));
   const shoulder = add(neck, mul(up, -5));
   const headC = add(neck, mul(up, HEADR + 1));
-  const ro = () => ({collisionFilter: filt, density: 0.0011, friction: 0.8, frictionAir: 0.002, restitution: 0.05});
+  const ro = () => ({collisionFilter: {group: GROUP, category: CAT_RIDER, mask: 0xFFFF}, density: 0.0011, friction: 0.8, frictionAir: 0.002, restitution: 0.05});
   const mk = (b, part, side) => { b.plugin.part = part; b.plugin.side = side; b.plugin.player = P; P.parts.push(b); all.push(b); return b; };
   const torso = mk(seg(neck, hip, TORSO, 15, ro()).body, 'torso', 'C');
   const head = mk(Bodies.circle(headC.x, headC.y, HEADR, ro()), 'head', 'C');
@@ -598,18 +728,19 @@ function kill(P, cause) {
 }
 const ROOT = {head: 'neck', uarm: 'shoulder', larm: 'elbow', thigh: 'hip', shin: 'knee'};
 function damage(P, part, imp, pos, hz) {
-  if (P.won) return;
+  if (P.won || P.armor > 0) return;
   const p = part.plugin.part, sharp = hz === 'spike' || hz === 'press';
   if (p === 'head') {
-    if (sharp || imp > 10.5) { breakJoint(P, 'neck', pos); kill(P, hz === 'press' ? 'La pressa ha schiacciato ' + P.ch.name + '.' : P.ch.name + ' ha perso la testa.'); }
+    if (sharp || imp > 14) { breakJoint(P, 'neck', pos); kill(P, hz === 'press' ? 'La pressa ha schiacciato ' + P.ch.name + '.' : P.ch.name + ' ha perso la testa.'); }
     else if (hz === 'bolt') { kill(P, 'Freccia in testa. ' + P.ch.name + ' è fuori dal Palio.'); blood(pos.x, pos.y, 14); }
-    else if (imp > 8.5) { kill(P, 'Colpo in testa. ' + P.ch.name + ' è KO.'); blood(pos.x, pos.y, 10); }
-    else if (imp > 5.5) eject(P);
+    else if (hz === 'sauce') kill(P, 'Bollito nel sugo: ' + P.ch.name + ' non ce l\'ha fatta.');
+    else if (imp > 11) { kill(P, 'Colpo in testa. ' + P.ch.name + ' è KO.'); blood(pos.x, pos.y, 10); }
+    else if (imp > 6) eject(P);
   } else if (p === 'torso') {
-    if (sharp || imp > 17) { kill(P, 'Schiena a pezzi. ' + P.ch.name + ' non si rialza.'); blood(pos.x, pos.y, 18); }
-    else if (hz === 'bolt') { eject(P); blood(pos.x, pos.y, 8); }
-    else if (imp > 8) eject(P);
-  } else if (hz || imp > 12) {
+    if (sharp || imp > 18) { kill(P, 'Schiena a pezzi. ' + P.ch.name + ' non si rialza.'); blood(pos.x, pos.y, 18); }
+    else if (hz === 'bolt' || hz === 'sauce') { eject(P); blood(pos.x, pos.y, 8); }
+    else if (imp > 8.5) eject(P);
+  } else if ((hz && hz !== 'sauce') || imp > 12) {
     if (breakJoint(P, ROOT[p] + part.plugin.side, pos) && !P.ejected) dropAttachOf(P, part);
   }
 }
@@ -660,7 +791,8 @@ function npcPair(pr, fn) {
 }
 function onCollStart(e) {
   for (const pr of e.pairs) {
-    npcPair(pr, knockNpc); hit(pr.bodyA, pr.bodyB, pr); hit(pr.bodyB, pr.bodyA, pr); disarm(pr); markGround(pr); smash(pr); }
+    npcPair(pr, knockNpc);
+    for (const b of [pr.bodyA, pr.bodyB]) if (b.plugin.kind === 'pot' && !b.plugin.gone && b.speed > 4) G.breakQ.push(b); hit(pr.bodyA, pr.bodyB, pr); hit(pr.bodyB, pr.bodyA, pr); disarm(pr); markGround(pr); smash(pr); }
 }
 function smash(pr) {
   for (const [a, o] of [[pr.bodyA, pr.bodyB], [pr.bodyB, pr.bodyA]]) {
@@ -680,7 +812,10 @@ function onCollActive(e) {
 }
 function disarm(pr) { for (const b of [pr.bodyA, pr.bodyB]) if (b.plugin.bolt && b.plugin.live) { const o = b === pr.bodyA ? pr.bodyB : pr.bodyA; if (!o.plugin.part) b.plugin.live = false; } }
 function markGround(pr) {
-  for (const [a, b] of [[pr.bodyA, pr.bodyB], [pr.bodyB, pr.bodyA]]) if (a.plugin.wheel && !b.plugin.vehicle) a.plugin.groundT = G.tick;
+  for (const [a, b] of [[pr.bodyA, pr.bodyB], [pr.bodyB, pr.bodyA]]) {
+    if (a.plugin.wheel && !b.plugin.vehicle) a.plugin.groundT = G.tick;
+    if (a.plugin.part && !b.plugin.vehicle && !b.plugin.part) a.plugin.groundT = G.tick;
+  }
 }
 function conv(c, o) {
   if (!c.plugin.conveyor || o.isStatic) return;
@@ -692,7 +827,10 @@ function hit(self, other, pr) {
   if (!sp.part || !sp.player) return;
   const P = sp.player;
   const n = pr.collision.normal;
-  const rv = sub(self.velocity, other.velocity || {x: 0, y: 0});
+  const pos = pr.collision.supports && pr.collision.supports[0] ? pr.collision.supports[0] : self.position;
+  let ov = other.velocity || {x: 0, y: 0};
+  if (other.isStatic && other.angularVelocity) { const r = sub(pos, other.position); ov = add(ov, {x: -other.angularVelocity * r.y, y: other.angularVelocity * r.x}); }
+  const rv = sub(self.velocity, ov);
   let imp = Math.abs(rv.x * n.x + rv.y * n.y);
   if (!other.isStatic) imp *= clamp(other.mass / (self.mass * 4), 0.25, 1); // light props hurt less
   const op = other.plugin;
@@ -701,14 +839,13 @@ function hit(self, other, pr) {
   if (op.bolt && op.live) { hz = 'bolt'; op.live = false; imp = 0; }
   if (op.kind === 'press' && op.down) hz = 'press';
   if (imp > 4) Snd.crunch(Math.min(1, imp / 14) * 0.6);
-  const pos = pr.collision.supports && pr.collision.supports[0] ? pr.collision.supports[0] : self.position;
   damage(P, self, imp, {x: pos.x, y: pos.y}, hz);
 }
 
 /* ================= people on foot ================= */
 const NPC = {
   kid: {h: 40, speed: 2.6, knock: 5, downT: 2, lines: ['Oh, bella!', 'Dove corri?', 'Fermati!', 'Ma che fai?', 'Eh oh!', 'Daje!']},
-  zombie: {h: 48, speed: 1.3, knock: 6, downT: 2.6, lines: ['Grrr...', 'Pastaaa...', 'Sfogliaaa...', 'Mmmh...']},
+  zombie: {h: 48, speed: 1.5, knock: 6, downT: 2.6, lines: ['Grrr...', 'Pastaaa...', 'Sfogliaaa...', 'Mmmh...']},
   tramp: {h: 48, speed: 0.9, knock: 4.5, downT: 3.5, lines: ['Hai mica un euro?', 'Ehi capo!', 'Offri un bicchiere?', 'Una monetina?']}
 };
 function say(n) { const L = NPC[n.type].lines; n.say = L[Math.floor(Math.random() * L.length)]; n.sayT = 1.6; }
@@ -726,6 +863,7 @@ function knockNpc(b, o) {
 }
 function npcContact(b, o) {
   const n = b.plugin.npc, P = G.player;
+  if (n.state === 'walk' && o.plugin.vehicle && (n.push = (n.push || 0) + 1) > 35) { n.push = 0; n.state = 'down'; n.t = 0; Body.setInertia(b, n.inertia); Body.setAngularVelocity(b, 0.15 * Math.sign(o.velocity.x || 1)); return; }
   if (n.state !== 'walk' || n.cd > 0 || P.dead) return;
   if (n.type === 'kid') { // shove the rider back and hop away
     for (const v of P.all) if (v.plugin.vehicle) Body.setVelocity(v, {x: v.velocity.x + n.dir * 3.2, y: v.velocity.y - 1.5});
@@ -738,7 +876,7 @@ function npcContact(b, o) {
 function npcTick(b, P) {
   const n = b.plugin.npc;
   if (b.plugin.gone) return;
-  n.t += STEP; n.cd -= STEP; n.sayT -= STEP; n.swing = Math.max(0, n.swing - STEP);
+  n.t += STEP; n.cd -= STEP; n.push = Math.max(0, (n.push || 0) - 0.3); n.sayT -= STEP; n.swing = Math.max(0, n.swing - STEP);
   const tgt = P.torso.position, dx = tgt.x - b.position.x, dist = Math.abs(dx);
   const def = NPC[n.type];
   if (n.state === 'sleep') { if (dist < 340) { n.state = 'walk'; say(n); } return; }
@@ -756,9 +894,10 @@ function npcTick(b, P) {
   if (n.type === 'tramp') want *= 0.6 + 0.4 * Math.sin(n.t * 3);
   if (Math.abs(b.velocity.y) < 1.5) Body.setVelocity(b, {x: lerp(b.velocity.x, want, 0.15), y: b.velocity.y});
   if (n.type === 'kid' && dist < 260 && Math.abs(b.velocity.y) < 0.3 && Math.random() < 0.012) Body.setVelocity(b, {x: b.velocity.x, y: -6});
+  if (n.type === 'kid' && G.state === 'play' && !P.dead && dist > 140 && dist < 420 && dx < 0 && (n.throwCd = (n.throwCd ?? rnd(0.5, 2)) - STEP) <= 0) { n.throwCd = rnd(2.5, 4.5); throwFirecracker(b, P); say(n); }
   if (n.grab > 0) {
     n.grab -= STEP;
-    if (!P.ejected) for (const v of P.all) if (v.plugin.vehicle) Body.setVelocity(v, {x: v.velocity.x * 0.94, y: v.velocity.y});
+    if (!P.ejected) for (const v of P.all) if (v.plugin.vehicle) Body.setVelocity(v, {x: v.velocity.x * 0.975, y: v.velocity.y});
   }
   if (n.type === 'zombie' && !P.dead) { // rolling-pin swing at whatever is in reach
     const hand = {x: b.position.x + n.dir * 16, y: b.position.y - 30};
@@ -768,7 +907,7 @@ function npcTick(b, P) {
       if (n.pending <= 0 && near.d < 78) {
         const part = near.p;
         Body.setVelocity(part, {x: part.velocity.x + n.dir * 4, y: part.velocity.y - 2});
-        damage(P, part, part.plugin.part === 'head' ? 9 : 8.5, part.position, null);
+        damage(P, part, part.plugin.part === 'head' ? (P.ejected ? 11.5 : 9.5) : 9, part.position, null);
         Snd.bonk();
       }
     } else if (n.cd <= 0 && near.d < 62) { n.swing = 0.35; n.pending = 0.18; n.cd = 1.6; }
@@ -879,11 +1018,18 @@ function tick() {
       Body.setAngularVelocity(ch, ch.angularVelocity * 0.88 - a * V.balance);
       if (Math.abs(a) > 1.1 && P.wheels.some(w => G.tick - w.plugin.groundT < 3)) Body.setVelocity(ch, {x: ch.velocity.x, y: Math.min(ch.velocity.y, -1.5)});
     }
-    // special
+    // jump (every vehicle) and special
+    P.jumpCd = (P.jumpCd || 0) - STEP;
+    if (k.jump && P.jumpCd <= 0 && P.wheels.some(w => G.tick - w.plugin.groundT < 4)) {
+      for (const b of P.all) Body.setVelocity(b, {x: b.velocity.x, y: Math.min(b.velocity.y, 0) - 7.2});
+      P.jumpCd = 0.6; Snd.boing();
+    }
     if (k.special && P.cd <= 0) special(P);
     if (k.eject) eject(P, 'manual');
   }
+  if (playing && P.ejected && !P.dead && !P.won) crawl(P, k);
   P.cd = Math.max(0, P.cd - STEP * eng.timing.timeScale);
+  P.armor = Math.max(0, (P.armor || 0) - STEP);
   if (P.boost > 0) {
     P.boost -= STEP;
     const d = rot({x: 1, y: 0}, ch.angle);
@@ -905,19 +1051,30 @@ function tick() {
     s.fire = Math.max(0, (s.fire || 0) - STEP);
     if (px < s.x - 120 && px > s.x - 1100 && !P.dead) {
       s.t -= STEP * eng.timing.timeScale;
-      if (s.t <= 0) { s.t = s.period * rnd(0.8, 1.25); shootBolt(s, P); }
+      if (s.t <= 0) { s.t = s.period * rnd(0.8, 1.25); if (s.type === 'cannon') shootBall(s, P); else shootBolt(s, P); }
     }
   }
   const tt = G.time;
   for (const m of G.L.movers) {
-    const ph = ((tt / m.period + m.phase / m.period) % 1 + 1) % 1;
-    // slam down quickly, rise slowly
-    let f; if (ph < 0.15) f = ph / 0.15; else if (ph < 0.35) f = 1; else f = 1 - (ph - 0.35) / 0.65;
-    f = f * f * (3 - 2 * f);
-    const y = lerp(m.top, m.bottom, f);
-    const prevY = m.b.position.y;
-    Body.setPosition(m.b, {x: m.x, y});
-    m.b.plugin.down = y - prevY > 2;
+    if (m.type === 'press') {
+      const ph = ((tt / m.period + m.phase / m.period) % 1 + 1) % 1;
+      // slam down quickly, rise slowly
+      let f; if (ph < 0.15) f = ph / 0.15; else if (ph < 0.35) f = 1; else f = 1 - (ph - 0.35) / 0.65;
+      f = f * f * (3 - 2 * f);
+      const y = lerp(m.top, m.bottom, f), prevY = m.b.position.y;
+      Body.setPosition(m.b, {x: m.x, y}); Body.setVelocity(m.b, {x: 0, y: y - prevY});
+      m.b.plugin.down = y - prevY > 2;
+    } else if (m.type === 'bell') {
+      const th = m.amp * Math.sin(tt * TAU / m.period + m.phase);
+      const pos = {x: m.piv.x + Math.sin(th) * m.len, y: m.piv.y + Math.cos(th) * m.len}, prev = {x: m.b.position.x, y: m.b.position.y};
+      Body.setPosition(m.b, pos); Body.setVelocity(m.b, sub(pos, prev)); Body.setAngle(m.b, -th);
+    } else if (m.type === 'spin') {
+      Body.setAngle(m.b, tt * m.w + m.phase); Body.setAngularVelocity(m.b, m.w * STEP);
+    }
+  }
+  for (const b of G.L.dyn) if (b.plugin.fuse !== undefined && !b.plugin.gone) {
+    b.plugin.fuse -= STEP * eng.timing.timeScale;
+    if (b.plugin.fuse <= 0) { b.plugin.gone = true; Composite.remove(eng.world, b); explode(b.position.x, b.position.y, 100, 5); }
   }
   // water and flying bolts
   const gScale = eng.gravity.scale * eng.gravity.y;
@@ -933,7 +1090,8 @@ function tick() {
       const dmp = 1 - 0.018 * frac;
       Body.setVelocity(b, {x: b.velocity.x * dmp, y: b.velocity.y * dmp});
       Body.setAngularVelocity(b, b.angularVelocity * (1 - 0.012 * frac));
-      if (frac > 0.2 && Math.abs(b.velocity.y) > 3 && Math.random() < 0.3) G.particles.push({x: b.position.x, y: w.y, vx: rnd(-2, 2), vy: rnd(-4, -1), life: 0.6, max: 0.6, r: 3, c: '#cfe8f5', g: 0.25});
+      if (frac > 0.2 && Math.abs(b.velocity.y) > 3 && Math.random() < 0.3) G.particles.push({x: b.position.x, y: w.y, vx: rnd(-2, 2), vy: rnd(-4, -1), life: 0.6, max: 0.6, r: 3, c: w.sauce ? '#d23a1e' : '#cfe8f5', g: 0.25});
+      if (w.sauce && frac > 0.5 && b.plugin.part && b.plugin.player) damage(b.plugin.player, b, 0, b.position, 'sauce');
     }
   }
   Engine.update(eng, 1000 / 60);
@@ -962,16 +1120,13 @@ function tick() {
     if (vlen(sub(pa, pb)) > 22) { breakJoint(P, j.name, pb); if (j.name === 'neck') kill(P, P.ch.name + ' ha perso la testa.'); }
   }
   // remove spent bolts
-  for (const b of G.L.dyn) if (b.plugin.bolt && G.time - b.plugin.born > 6 && !b.plugin.gone) { Composite.remove(eng.world, b); b.plugin.gone = true; }
+  for (const b of G.L.dyn) if ((b.plugin.bolt || b.plugin.ttl) && G.time - b.plugin.born > (b.plugin.ttl || 6) && !b.plugin.gone) { Composite.remove(eng.world, b); b.plugin.gone = true; }
   // fall off the world
   if (P.torso.position.y > G.bounds.maxY + 900) kill(P, 'Fuori mappa: di ' + P.ch.name + ' non c\'è più traccia.');
   // finish
   if (playing && !P.dead && !P.won && G.L.finish && P.torso.position.x > G.L.finish.x) win(P);
   if (playing && P.dead && !G.msgShown && G.time - G.deadAt > 1.4) showDeath(P.cause);
-  if (playing && !P.dead && P.ejected && !P.won && !G.msgShown) {
-    if (!G.ejAt) G.ejAt = G.time;
-    if (G.time - G.ejAt > 4 && vlen(P.torso.velocity) < 0.6) showDeath(P.ch.name + ' è a terra, ma ancora in un pezzo.');
-  } else G.ejAt = null;
+  $('hint').hidden = !(playing && P.ejected && !P.dead && !P.won);
   // particles
   for (const p of G.particles) { p.x += p.vx; p.y += p.vy; p.vy += p.g === undefined ? 0.3 : p.g; p.life -= STEP; if (p.grow) p.r += p.grow; }
   G.particles = G.particles.filter(p => p.life > 0);
@@ -982,11 +1137,7 @@ function special(P) {
   const V = P.V; P.cd = V.cd;
   const grounded = P.wheels.some(w => G.tick - w.plugin.groundT < 3);
   if (P.ch.veh === 'ragazza') { P.boost = 0.7; Snd.boost(); }
-  else if (P.ch.veh === 'bici') {
-    if (!grounded) { P.cd = 0; return; }
-    for (const b of P.all) Body.setVelocity(b, {x: b.velocity.x, y: b.velocity.y - 8.5});
-    Snd.boing();
-  } else if (P.ch.veh === 'eauto') { P.fix = 1.6; Snd.tone(660, 0.25, 'sine', 0.08, 990); }
+  else if (P.ch.veh === 'bici') { P.armor = 4; Snd.tone(110, 0.5, 'sawtooth', 0.08, 220); } else if (P.ch.veh === 'eauto') { P.fix = 1.6; Snd.tone(660, 0.25, 'sine', 0.08, 990); }
   else if (P.ch.veh === 'suv') { G.engine.timing.timeScale = 0.4; G.slowT = 2.8; Snd.whistle(); }
 }
 
@@ -1003,6 +1154,64 @@ function shootBolt(s, P) {
 
 function blood(x, y, n) {
   for (let i = 0; i < n; i++) G.particles.push({x, y, vx: rnd(-3.5, 3.5), vy: rnd(-5, 1), life: rnd(0.6, 1.4), max: 1.4, r: rnd(1.5, 3.5), c: i % 3 ? '#b3121b' : '#7e0c12'});
+}
+
+function explode(x, y, R, pw) {
+  for (const b of Composite.allBodies(G.engine.world)) {
+    if (b.isStatic) continue;
+    const d = sub(b.position, {x, y}), l = vlen(d);
+    if (l > R) continue;
+    const k = pw * (1 - l / R) / Math.sqrt(Math.max(0.4, b.mass)), n = norm(l < 1 ? {x: 0, y: -1} : d);
+    Body.setVelocity(b, {x: b.velocity.x + n.x * k, y: b.velocity.y + n.y * k - k * 0.4});
+  }
+  const P = G.player;
+  for (const part of [P.head, P.torso]) if (vlen(sub(part.position, {x, y})) < R * 0.45) damage(P, part, 7, part.position, null);
+  for (let i = 0; i < 26; i++) G.particles.push({x, y, vx: rnd(-4, 4), vy: rnd(-5, 1), life: rnd(0.3, 0.7), max: 0.7, r: rnd(3, 7), c: ['#ffd23c', '#ff8a2a', '#e0302a'][i % 3], g: 0.05});
+  for (let i = 0; i < 10; i++) G.particles.push({x, y, vx: rnd(-1.5, 1.5), vy: rnd(-2, -0.5), life: 1.2, max: 1.2, r: 6, c: 'rgba(80,80,80,.45)', g: -0.02, grow: 0.3});
+  Snd.boom();
+}
+function shootBall(s, P) {
+  const gy = groundAt(s.x);
+  const b = Bodies.circle(s.x - 34, gy - 26, 11, {density: 0.006, friction: 0.6, frictionAir: 0});
+  b.plugin.kind = 'cannon'; b.plugin.r = 11; b.plugin.born = G.time; b.plugin.ttl = 7;
+  Body.setVelocity(b, {x: -rnd(9, 12), y: -rnd(2, 4.5)});
+  Composite.add(G.engine.world, b); G.L.dyn.push(b);
+  s.fire = 0.35; Snd.boom(0.6);
+  for (let i = 0; i < 8; i++) G.particles.push({x: s.x - 40, y: gy - 26, vx: rnd(-3, -0.5), vy: rnd(-1.5, 0.5), life: 0.8, max: 0.8, r: 6, c: 'rgba(220,220,220,.6)', g: -0.02, grow: 0.25});
+}
+function throwFirecracker(b, P) {
+  const p = Bodies.rectangle(b.position.x, b.position.y - 24, 10, 4, {density: 0.002, friction: 0.8});
+  p.plugin.kind = 'petardo'; p.plugin.w = 10; p.plugin.h = 4; p.plugin.fuse = 1.3;
+  const dx = P.torso.position.x - b.position.x;
+  Body.setVelocity(p, {x: clamp(dx / 38, -9, 9) + P.chassis.velocity.x * 0.6, y: -6.5});
+  Body.setAngularVelocity(p, 0.3);
+  Composite.add(G.engine.world, p); G.L.dyn.push(p);
+}
+function connectedParts(P) { // limbs still joined to the torso
+  const seen = new Set([P.torso]);
+  let grew = true;
+  while (grew) { grew = false; for (const j of P.joints) { const a = j.c.bodyA, b = j.c.bodyB; if (seen.has(a) !== seen.has(b)) { seen.add(a); seen.add(b); grew = true; } } }
+  return seen;
+}
+// on foot after a crash: wriggle along the ground with whatever limbs are left
+function crawl(P, k) {
+  P.hopCd = (P.hopCd || 0) - STEP;
+  const dir = (k.right || k.gas ? 1 : 0) - (k.left || k.brake ? 1 : 0);
+  const touching = P.parts.some(b => G.tick - (b.plugin.groundT ?? -99) < 4);
+  const con = connectedParts(P);
+  const limbs = P.parts.filter(b => con.has(b) && b !== P.torso && b !== P.head).length;
+  if (dir && touching) {
+    const sp = 0.9 + limbs * 0.22;
+    let i = 0;
+    for (const b of P.parts) if (con.has(b)) {
+      Body.setVelocity(b, {x: lerp(b.velocity.x, dir * sp, 0.2), y: b.velocity.y});
+      if (b !== P.torso && b !== P.head) Body.setAngularVelocity(b, Math.sin(G.time * 9 + i++ * 1.7) * 0.22);
+    }
+  }
+  if ((k.jump || k.special) && touching && P.hopCd <= 0) {
+    for (const b of P.parts) if (con.has(b)) Body.setVelocity(b, {x: b.velocity.x + dir * 1.5, y: b.velocity.y - 4.5});
+    P.hopCd = 0.8;
+  }
 }
 
 /* ================= rendering ================= */
@@ -1035,11 +1244,11 @@ function render() {
   // world
   ctx.setTransform(DPR * s, 0, 0, DPR * s, DPR * (W / 2 - cam.x * s), DPR * (H / 2 - cam.y * s));
   const view = {x1: cam.x - W / 2 / s - 50, x2: cam.x + W / 2 / s + 50};
-  for (const sp of G.L.spawners) drawCrossbowman(sp);
+  for (const sp of G.L.spawners) (sp.type === 'cannon' ? drawCannon(sp) : drawCrossbowman(sp));
   for (const sg2 of G.L.signs) if (sg2.x > view.x1 - 300 && sg2.x < view.x2 + 300) drawSign(sg2);
   if (G.L.finish) drawFinish(G.L.finish);
   drawTerrain(lv, view);
-  for (const b of G.L.dyn) if (!b.plugin.gone) (b.plugin.npc ? drawNPC(b) : drawProp(b));
+  for (const b of G.L.dyn) if (!b.plugin.gone) { drawRig(b); (b.plugin.npc ? drawNPC(b) : drawProp(b)); }
   drawPlayer(P);
   for (const p of G.particles) {
     ctx.globalAlpha = clamp(p.life / (p.max || 1), 0, 1);
@@ -1047,11 +1256,12 @@ function render() {
   }
   ctx.globalAlpha = 1;
   for (const w of G.L.waters) {
-    ctx.fillStyle = 'rgba(52,120,170,.55)';
+    ctx.fillStyle = w.sauce ? 'rgba(190,45,25,.82)' : 'rgba(52,120,170,.55)';
     ctx.beginPath(); ctx.moveTo(w.x1, w.y);
     for (let x = w.x1; x <= w.x2; x += 8) ctx.lineTo(x, Math.max(w.y, groundAt(x) + 6));
     ctx.lineTo(w.x2, w.y); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = 'rgba(220,240,255,.8)'; ctx.lineWidth = 3;
+    ctx.strokeStyle = w.sauce ? 'rgba(255,140,90,.9)' : 'rgba(220,240,255,.8)'; ctx.lineWidth = 3;
+    if (w.sauce && Math.random() < 0.15) G.particles.push({x: rnd(w.x1, w.x2), y: w.y, vx: 0, vy: -0.6, life: 0.8, max: 0.8, r: 4, c: 'rgba(240,240,240,.35)', g: -0.01, grow: 0.15});
     ctx.beginPath();
     for (let x = w.x1; x <= w.x2; x += 10) ctx.lineTo(x, w.y + Math.sin(x * 0.05 + G.tick * 0.06) * 2);
     ctx.stroke();
@@ -1160,6 +1370,28 @@ function drawProp(b) {
     ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(w / 2, 0); ctx.stroke();
     ctx.fillStyle = '#9aa0a6'; ctx.beginPath(); ctx.moveTo(w / 2 + 6, 0); ctx.lineTo(w / 2 - 2, -4); ctx.lineTo(w / 2 - 2, 4); ctx.fill();
     ctx.fillStyle = '#d2553a'; ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(-w / 2 + 8, -5); ctx.lineTo(-w / 2 + 8, 5); ctx.fill();
+  } else if (k === 'pot') {
+    ctx.fillStyle = '#c4663a'; ctx.beginPath(); ctx.moveTo(-8, -4); ctx.lineTo(8, -4); ctx.lineTo(6, 9); ctx.lineTo(-6, 9); ctx.fill();
+    ctx.fillStyle = '#a5532e'; ctx.fillRect(-9, -6, 18, 4);
+    ctx.fillStyle = '#4f7a3a'; ctx.beginPath(); ctx.arc(0, -10, 7, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#d93a3a'; for (const [x, y] of [[-4, -12], [3, -14], [4, -8]]) { ctx.beginPath(); ctx.arc(x, y, 2.2, 0, TAU); ctx.fill(); }
+  } else if (k === 'petardo') {
+    ctx.fillStyle = '#d2302a'; ctx.fillRect(-w / 2, -h / 2, w, h);
+    if (G.tick % 4 < 2) { ctx.fillStyle = '#ffd23c'; ctx.beginPath(); ctx.arc(w / 2 + 2, 0, 3, 0, TAU); ctx.fill(); }
+  } else if (k === 'spinner') {
+    ctx.fillStyle = '#5a3a1e'; ctx.fillRect(-w / 2, -h / 2, w, h);
+    for (const s of [-1, 1]) { // a flag at each end
+      ctx.save(); ctx.translate(s * (w / 2 - 4), 0); ctx.scale(s, 1);
+      ctx.fillStyle = '#f4ead6'; ctx.fillRect(-40, h / 2, 40, 16);
+      ctx.fillStyle = '#1d1a2b'; ctx.fillRect(-40, h / 2 + 16, 40, 16);
+      ctx.fillStyle = '#d2553a'; ctx.fillRect(-26, h / 2 + 4, 12, 24);
+      ctx.restore();
+    }
+  } else if (k === 'bell') {
+    ctx.fillStyle = '#b8862f';
+    ctx.beginPath(); ctx.moveTo(-14, -18); ctx.quadraticCurveTo(-16, 8, -26, 18); ctx.lineTo(26, 18); ctx.quadraticCurveTo(16, 8, 14, -18); ctx.quadraticCurveTo(0, -28, -14, -18); ctx.fill();
+    ctx.fillStyle = '#8a6020'; ctx.fillRect(-26, 14, 52, 5);
+    ctx.fillStyle = '#5a3e15'; ctx.beginPath(); ctx.arc(0, 22, 5, 0, TAU); ctx.fill();
   } else if (k === 'spikes') {
     ctx.fillStyle = '#5b5f66'; ctx.fillRect(-w / 2, 2, w, 4);
     ctx.fillStyle = '#c4c9cf';
@@ -1183,6 +1415,34 @@ function drawProp(b) {
   ctx.restore();
 }
 
+function drawRig(b) { // beams, ropes and people that hold kinematic hazards
+  const k = b.plugin.kind;
+  if (k === 'bell') {
+    const p = b.plugin.piv, gy = b.plugin.gy;
+    ctx.fillStyle = '#6b4626'; ctx.fillRect(p.x - 150, p.y - 8, 300, 12); ctx.fillRect(p.x - 150, p.y - 8, 10, gy - p.y + 8); ctx.fillRect(p.x + 140, p.y - 8, 10, gy - p.y + 8);
+    ctx.strokeStyle = '#3a2a1a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(b.position.x, b.position.y); ctx.stroke();
+  } else if (k === 'spinner') {
+    const x = b.position.x, gy = b.plugin.gy;
+    ctx.fillStyle = '#3a2a1a'; ctx.fillRect(x - 7, gy - 30, 5, 30); ctx.fillRect(x + 2, gy - 30, 5, 30);
+    ctx.fillStyle = '#f4ead6'; ctx.fillRect(x - 9, gy - 64, 9, 36); ctx.fillStyle = '#d2553a'; ctx.fillRect(x, gy - 64, 9, 36);
+    ctx.strokeStyle = '#e8b892'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x - 4, gy - 60); ctx.lineTo(x, gy - 84); ctx.stroke();
+    ctx.strokeStyle = '#5a3a1e'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(x, gy - 80); ctx.lineTo(x, gy - 170); ctx.stroke();
+    ctx.fillStyle = '#e8b892'; ctx.beginPath(); ctx.arc(x - 12, gy - 70, 7, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#1d1a2b'; ctx.beginPath(); ctx.arc(x - 12, gy - 72, 7.5, Math.PI, TAU); ctx.fill();
+  }
+}
+function drawCannon(s) {
+  const gy = groundAt(s.x);
+  ctx.save(); ctx.translate(s.x, gy);
+  ctx.fillStyle = '#6b4626'; ctx.fillRect(-26, -20, 46, 12);
+  ctx.fillStyle = '#3a2a1a'; ctx.beginPath(); ctx.arc(-14, -9, 10, 0, TAU); ctx.arc(12, -9, 10, 0, TAU); ctx.fill();
+  ctx.save(); ctx.translate(0, -26); ctx.rotate(0.2);
+  ctx.fillStyle = '#2c2c30'; rr(ctx, -38, -8, 58, 16, 6); ctx.fill(); ctx.fillRect(-42, -10, 8, 20);
+  ctx.restore();
+  if (s.fire > 0) { ctx.fillStyle = 'rgba(255,200,80,.9)'; ctx.beginPath(); ctx.arc(-44, -34, 9, 0, TAU); ctx.fill(); }
+  if (s.t < 0.5 && s.t > 0 && G.state === 'play') { ctx.fillStyle = '#ffd23c'; ctx.beginPath(); ctx.arc(16, -40, 3 + Math.sin(G.tick) * 1.5, 0, TAU); ctx.fill(); }
+  ctx.restore();
+}
 function drawSign(sg) {
   ctx.save(); ctx.translate(sg.x, sg.y);
   ctx.font = '700 15px Barlow Condensed, sans-serif';
@@ -1260,6 +1520,31 @@ function banners(c, w, h) {
   }
 }
 const DECO = {
+  lamp(c) { // cast-iron street lamp
+    c.fillStyle = '#26262b'; c.fillRect(-3, -150, 6, 230); c.fillRect(-10, -6, 20, 6);
+    c.fillRect(-3, -150, 26, 4);
+    c.fillStyle = '#26262b'; c.beginPath(); c.moveTo(14, -146); c.lineTo(32, -146); c.lineTo(28, -126); c.lineTo(18, -126); c.fill();
+    c.fillStyle = '#ffe9a8'; c.fillRect(19, -142, 8, 14);
+  },
+  cones(c) { // road works
+    for (const x of [-60, 0, 60]) { c.fillStyle = '#ff6a1a'; c.beginPath(); c.moveTo(x - 9, 0); c.lineTo(x, -28); c.lineTo(x + 9, 0); c.fill(); c.fillStyle = '#f4f4f4'; c.fillRect(x - 5, -16, 10, 4); }
+    c.fillStyle = '#f4f4f4'; c.fillRect(-80, -44, 160, 10);
+    c.fillStyle = '#e0302a'; for (let x = -80; x < 80; x += 20) c.fillRect(x, -44, 10, 10);
+  },
+  sanfrancesco(c) { // gothic church with bell gable
+    c.fillStyle = '#c9b48f'; c.beginPath(); c.moveTo(-100, 80); c.lineTo(-100, -160); c.lineTo(0, -210); c.lineTo(100, -160); c.lineTo(100, 80); c.fill();
+    c.fillStyle = '#c9b48f'; c.fillRect(70, -250, 30, 50); c.fillStyle = '#3d2f2a'; c.beginPath(); c.moveTo(78, -205); c.lineTo(78, -230); c.arc(85, -230, 7, Math.PI, TAU); c.lineTo(92, -205); c.fill();
+    c.fillStyle = '#efe6d2'; c.beginPath(); c.arc(0, -130, 22, 0, TAU); c.fill();
+    c.strokeStyle = '#8a7a5e'; c.lineWidth = 2; c.beginPath(); c.arc(0, -130, 14, 0, TAU); c.stroke();
+    c.fillStyle = '#4a3226'; c.beginPath(); c.moveTo(-26, 0); c.lineTo(-26, -50); c.quadraticCurveTo(0, -100, 26, -50); c.lineTo(26, 0); c.fill();
+    c.strokeStyle = '#a89878'; c.lineWidth = 4; c.beginPath(); c.moveTo(-32, 0); c.lineTo(-32, -52); c.quadraticCurveTo(0, -110, 32, -52); c.lineTo(32, 0); c.stroke();
+  },
+  servi(c) { // Santa Maria dei Servi: plain stone front, small rose window
+    c.fillStyle = '#d4c3a0'; c.beginPath(); c.moveTo(-90, 80); c.lineTo(-90, -150); c.lineTo(0, -185); c.lineTo(90, -150); c.lineTo(90, 80); c.fill();
+    c.fillStyle = '#efe6d2'; c.beginPath(); c.arc(0, -120, 16, 0, TAU); c.fill();
+    c.fillStyle = '#4a3226'; c.beginPath(); c.moveTo(-20, 0); c.lineTo(-20, -50); c.arc(0, -50, 20, Math.PI, TAU); c.lineTo(20, 0); c.fill();
+    c.fillStyle = '#8f4a30'; c.fillRect(-96, -154, 12, 8);
+  },
   palazzo(c, o, x) { palazzo(c, o, x); },
   laudi(c, o, x) { // Palazzo delle Laudi: loggia and clock
     palazzo(c, {w: 280, h: 170, c: '#cdb48c', arcade: true, banners: o.banners}, x);
@@ -1587,6 +1872,10 @@ function drawPlayer(P) {
   ctx.save(); ctx.translate(P.head.position.x, P.head.position.y); ctx.rotate(P.head.angle); drawHead(ctx, ch, HEADR, P.dead); ctx.restore();
   for (const n of ['uarm', 'larm']) drawLimb(byPart(n, 'F'), ch, false);
   vtrans(); VDRAW[ch.veh].front(ctx, V); ctx.restore();
+  if (P.armor > 0) { // steel-muscle glow
+    ctx.strokeStyle = 'rgba(255,210,60,' + (0.45 + Math.sin(G.tick * 0.4) * 0.25) + ')'; ctx.lineWidth = 4;
+    for (const b of [P.torso, P.head]) { ctx.beginPath(); ctx.arc(b.position.x, b.position.y, b === P.head ? 16 : 26, 0, TAU); ctx.stroke(); }
+  }
 }
 
 /* ================= audio ================= */
@@ -1617,6 +1906,14 @@ const Snd = {
     this.tone(1150, 0.09, 'sine', 0.16, 1650);
     setTimeout(() => this.tone(1450, 0.15, 'sine', 0.16, 2150), 115);
   },
+  boom(v = 1) {
+    if (!this.on || !this.ac) return;
+    const n = Math.floor(this.ac.sampleRate * 0.4), buf = this.ac.createBuffer(1, n, this.ac.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2);
+    const s = this.ac.createBufferSource(), g = this.ac.createGain(), f = this.ac.createBiquadFilter();
+    f.type = 'lowpass'; f.frequency.value = 500; g.gain.value = 0.5 * v;
+    s.buffer = buf; s.connect(f).connect(g).connect(this.ac.destination); s.start();
+  },
   bonk() { this.tone(170, 0.14, 'square', 0.1, 80); },
   win() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.22, 'square', 0.06), i * 120)); }
 };
@@ -1629,21 +1926,91 @@ function updateHud() {
   const P = G.player;
   $('hudMeter').style.width = (100 * (1 - P.cd / P.V.cd)) + '%';
 }
-function bestKey() { return G.level.id + ':' + CHARS[G.charIdx].id; }
-function bests() { return store('bw-best') || {}; }
+function boardOf(id) { const all = store('bw-board') || {}; return all[id] || []; }
+function qualifies(id, t) { const B = boardOf(id); return B.length < 10 || t < B[B.length - 1].t; }
+function addScore(id, entry) {
+  const all = store('bw-board') || {};
+  const B = (all[id] || []).concat(entry).sort((a, b) => a.t - b.t).slice(0, 10);
+  all[id] = B; store('bw-board', all);
+  return B;
+}
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const NAME = {slots: [0, 0, 0], cur: 0};
+function renderBoard(B, mark) {
+  const ol = $('msgBoard'); ol.innerHTML = '';
+  B.forEach(e => {
+    const li = document.createElement('li');
+    if (e === mark) li.className = 'me';
+    const n = document.createElement('b'); n.textContent = e.n;
+    const c = document.createElement('span'); c.textContent = (CHARS.find(x => x.id === e.c) || {name: ''}).name;
+    const tm = document.createElement('i'); tm.textContent = e.t.toFixed(2) + ' s';
+    li.append(n, c, tm); ol.append(li);
+  });
+  ol.hidden = !B.length;
+}
+function renderName() {
+  document.querySelectorAll('#nameBox .slot').forEach((el, i) => {
+    el.querySelector('.ltr').textContent = LETTERS[NAME.slots[i]];
+    el.classList.toggle('cur', i === NAME.cur);
+  });
+}
+function askName() {
+  G.state = 'name';
+  const prev = store('bw-name') || 'AAA';
+  NAME.slots = [...prev].map(ch => Math.max(0, LETTERS.indexOf(ch))); NAME.cur = 0;
+  $('nameBox').hidden = false; $('msgBoard').hidden = true;
+  $('msgRetry').hidden = true; $('msgNext').hidden = true; $('msgMenu').hidden = true;
+  renderName();
+  $('nameSave').focus({preventScroll: true});
+}
+function saveName() {
+  const n = NAME.slots.map(i => LETTERS[i]).join('');
+  store('bw-name', n);
+  const entry = {n, c: CHARS[G.charIdx].id, t: G.pendingTime};
+  const B = addScore(G.level.id, entry);
+  G.state = 'play';
+  $('nameBox').hidden = true; $('msgRetry').hidden = false; $('msgMenu').hidden = false; $('msgNext').hidden = !(G.levelIdx < LEVELS.length - 1);
+  $('msgText').textContent = 'Record salvato: ' + n + ', ' + entry.t.toFixed(2) + ' s, ' + (B.indexOf(entry) + 1) + '° posto.';
+  renderBoard(B, entry);
+  $(G.levelIdx < LEVELS.length - 1 ? 'msgNext' : 'msgRetry').focus({preventScroll: true});
+}
+function nameKey(e) {
+  const c = e.code;
+  if (c === 'ArrowUp' || c === 'KeyW') NAME.slots[NAME.cur] = (NAME.slots[NAME.cur] + 1) % LETTERS.length;
+  else if (c === 'ArrowDown' || c === 'KeyS') NAME.slots[NAME.cur] = (NAME.slots[NAME.cur] + LETTERS.length - 1) % LETTERS.length;
+  else if (c === 'ArrowLeft' || c === 'Backspace') NAME.cur = Math.max(0, NAME.cur - 1);
+  else if (c === 'ArrowRight') NAME.cur = Math.min(2, NAME.cur + 1);
+  else if (c === 'Enter') { saveName(); e.preventDefault(); return; }
+  else if (e.key && e.key.length === 1 && LETTERS.includes(e.key.toUpperCase())) { NAME.slots[NAME.cur] = LETTERS.indexOf(e.key.toUpperCase()); NAME.cur = Math.min(2, NAME.cur + 1); }
+  else return;
+  e.preventDefault(); renderName();
+}
+function buildNameBox() {
+  const box = $('nameSlots');
+  for (let i = 0; i < 3; i++) {
+    const s = document.createElement('div'); s.className = 'slot';
+    s.innerHTML = '<button type="button" class="up" aria-label="Lettera successiva">&#9650;</button><span class="ltr">A</span><button type="button" class="dn" aria-label="Lettera precedente">&#9660;</button>';
+    s.querySelector('.up').addEventListener('click', () => { NAME.cur = i; NAME.slots[i] = (NAME.slots[i] + 1) % LETTERS.length; renderName(); });
+    s.querySelector('.dn').addEventListener('click', () => { NAME.cur = i; NAME.slots[i] = (NAME.slots[i] + LETTERS.length - 1) % LETTERS.length; renderName(); });
+    s.querySelector('.ltr').addEventListener('click', () => { NAME.cur = i; renderName(); });
+    box.append(s);
+  }
+  $('nameSave').addEventListener('click', saveName);
+}
 function win(P) {
   P.won = true; Snd.win();
-  const b = bests(), k = bestKey(), prev = b[k];
-  const rec = !prev || G.time < prev;
-  if (rec) { b[k] = G.time; store('bw-best', b); }
   for (let i = 0; i < 40; i++) G.particles.push({x: G.L.finish.x + rnd(0, 120), y: groundAt(G.L.finish.x) - 170, vx: rnd(-3, 3), vy: rnd(-4, 1), life: rnd(1, 2), max: 2, r: 3, c: ['#f0b43c', '#d2553a', '#f4ead6', '#86cdb9'][i % 4], g: 0.12});
+  const t = G.time, id = G.level.id, rec = qualifies(id, t), B = boardOf(id);
+  const first = !B.length || t < B[0].t;
+  G.pendingTime = t;
   setTimeout(() => {
-    showMsg('Arrivato!', P.ch.name + ' ha chiuso ' + G.level.name + ' in ' + G.time.toFixed(2) + ' s.' + (rec ? ' Nuovo record!' : ' Record: ' + prev.toFixed(2) + ' s.'), G.levelIdx < LEVELS.length - 1);
+    showMsg(rec ? (first ? 'Record!' : 'In classifica!') : 'Arrivato!', P.ch.name + ' ha chiuso ' + G.level.name + ' in ' + t.toFixed(2) + ' s.' + (rec ? ' Inserisci le tue iniziali.' : ''), G.levelIdx < LEVELS.length - 1);
+    if (rec) askName(); else renderBoard(B, null);
   }, 900);
 }
 function showDeath(cause) { showMsg('Ahia!', cause + ' Premi R per riprovare.', false); }
 function showMsg(t, txt, next) {
-  G.msgShown = true;
+  G.msgShown = true; $('msgBoard').hidden = true; $('nameBox').hidden = true; $('msgRetry').hidden = false; $('msgMenu').hidden = false;
   $('msgTitle').textContent = t; $('msgText').textContent = txt; $('msgNext').hidden = !next; $('msg').hidden = false;
   $(next ? 'msgNext' : 'msgRetry').focus({preventScroll: true});
 }
@@ -1678,12 +2045,11 @@ function buildMenu() {
   refreshMenu();
 }
 function refreshMenu() {
-  const bs = bests();
   CHARS.forEach((ch, i) => $('char-' + ch.id).setAttribute('aria-pressed', i === G.charIdx));
   LEVELS.forEach((lv, i) => {
     const el = $('lv-' + lv.id); el.setAttribute('aria-pressed', i === G.levelIdx);
-    const v = bs[lv.id + ':' + CHARS[G.charIdx].id];
-    el.querySelector('.best').textContent = v ? v.toFixed(2) + ' s' : '';
+    const top = boardOf(lv.id)[0];
+    el.querySelector('.best').textContent = top ? top.n + ' · ' + top.t.toFixed(2) + ' s' : '';
   });
   const ch = CHARS[G.charIdx], V = VEHS[ch.veh];
   $('charInfo').innerHTML = '';
@@ -1703,7 +2069,7 @@ function startGame() {
   canvas.focus && canvas.focus();
 }
 function toMenu() {
-  G.state = 'menu'; hideMsg();
+  G.state = 'menu'; hideMsg(); $('hint').hidden = true;
   $('menu').hidden = false; $('hud').hidden = true; $('touch').hidden = true;
   refreshMenu(); loadLevel(G.levelIdx, G.charIdx);
 }
@@ -1716,8 +2082,9 @@ $('msgRetry').addEventListener('click', restart);
 $('msgMenu').addEventListener('click', toMenu);
 $('msgNext').addEventListener('click', () => { G.levelIdx = Math.min(LEVELS.length - 1, G.levelIdx + 1); saveSel(); startGame(); });
 
-const KEYMAP = {ArrowUp: 'gas', KeyW: 'gas', ArrowDown: 'brake', KeyS: 'brake', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Space: 'special', KeyZ: 'eject'};
+const KEYMAP = {ArrowUp: 'gas', KeyW: 'gas', ArrowDown: 'brake', KeyS: 'brake', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Space: 'jump', KeyX: 'special', ShiftLeft: 'special', ShiftRight: 'special', KeyZ: 'eject'};
 window.addEventListener('keydown', e => {
+  if (G.state === 'name') { nameKey(e); return; }
   if (G.state !== 'play') { if (e.code === 'Enter' && document.activeElement === document.body) startGame(); return; }
   const k = KEYMAP[e.code];
   if (k) { G.keys[k] = true; e.preventDefault(); }
@@ -1746,6 +2113,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 buildMenu();
+buildNameBox();
 loadLevel(G.levelIdx, G.charIdx);
 requestAnimationFrame(frame);
 </script>
