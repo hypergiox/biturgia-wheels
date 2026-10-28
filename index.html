@@ -241,7 +241,7 @@ const CHARS = [
     info: 'Gumi, riccio con occhiali e piercing, corre in moto con la pistola sempre pronta.'},
   {id: 'capa', name: 'Capa', veh: 'carriola', scale: 0.78, skin: '#d9a07a', shirt: '#d9a07a', uarm: '#d9a07a', larm: '#d9a07a', pants: '#d2202a', shin: '#d9a07a', shoes: '#b07a56', hair: '#2a1a10',
     info: 'Il Capa, bassissimo, bellissimo e barbuto, a petto nudo e in pantaloncini rossi, viaggia in una carriola spinta da un amico pelato.'},
-  {id: 'davidone', name: 'Davidone', veh: 'piedi', scale: 1.18, skin: '#e3b08a', shirt: '#e07a2a', uarm: '#e07a2a', larm: '#e3b08a', pants: '#3b4a6b', shin: '#3b4a6b', shoes: '#f4f4f4', hair: '#2e2018',
+  {id: 'davidone', name: 'Davidone', veh: 'piedi', scale: 1.18, skin: '#e3b08a', shirt: '#5b7a3a', uarm: '#5b7a3a', larm: '#e3b08a', pants: '#a89470', shin: '#a89470', shoes: '#5a3a22', hair: '#3a2618',
     bulk: {torso: 1.5, uarm: 1.3, larm: 1.25, thigh: 1.3, shin: 1.2},
     info: 'Davidone non ha bisogno di un veicolo: va a piedi, e quando mangia i fagioli spicca il volo.'}
 
@@ -268,10 +268,10 @@ const VEHS = {
     speed: 15, torque: 0.45, seat: {x: -10, y: -14}, hand: {x: 20, y: -30}, foot: {x: 2, y: 0}, lean: 0.0045, cd: 0.35},
   carriola: {name: 'Carriola', special: 'Campari', sdesc: 'super turbo, ma con i comandi invertiti finché dura', color: '#3f8a3e',
     ch: {w: 66, h: 16}, dens: 0.003, wheels: [{x: -48, y: 30, r: 10, drive: true, hide: true}, {x: 34, y: 28, r: 12, drive: true}],
-    speed: 11, torque: 0.5, seat: {x: -4, y: -8}, hand: {x: 10, y: -8}, foot: {x: 30, y: -22}, lean: 0.004, cd: 9, balance: 0.012},
+    speed: 11, torque: 0.5, seat: {x: -4, y: -8}, hand: {x: 10, y: -8}, foot: {x: 30, y: -22}, lean: 0.004, cd: 11, balance: 0.012},
   piedi: {name: 'A piedi', special: 'Fagioli', sdesc: 'una scoreggia che vale un secondo salto, anche in aria', color: '#7a5a3a', hideWheels: true,
-    ch: {w: 22, h: 30}, dens: 0.003, wheels: [{x: -10, y: 36, r: 10, drive: true}, {x: 10, y: 36, r: 10, drive: true}],
-    speed: 8.5, torque: 0.45, seat: {x: 0, y: -4}, hand: {x: 10, y: 6}, foot: {x: 0, y: 32}, lean: 0.003, cd: 2.2, balance: 0.07, walk: true, noHands: true}
+    ch: {w: 22, h: 14}, dens: 0.0065, wheels: [{x: -10, y: 36, r: 10, drive: true}, {x: 10, y: 36, r: 10, drive: true}],
+    speed: 8.5, torque: 0.45, seat: {x: 0, y: -4}, hand: {x: 10, y: 6}, foot: {x: 0, y: 32}, lean: 0.003, cd: 2.2, balance: 0.2, walk: true, noHands: true}
 };
 
 const TORSO = 32, HEADR = 10, UARM = 16, LARM = 16, THIGH = 19, SHIN = 19;
@@ -829,7 +829,8 @@ function buildPlayer(world, ch, ox, oy) {
     const wb = Bodies.circle(ox + w.x, oy + w.y, w.r, {collisionFilter: filt, density: 0.003, friction: 1, frictionStatic: 2, restitution: 0.05, frictionAir: 0.001});
     wb.plugin.wheel = w; wb.plugin.vehicle = true; wb.plugin.groundT = -99;
     P.wheels.push(wb); all.push(wb);
-    Composite.add(world, Constraint.create({bodyA: chassis, pointA: {x: w.x, y: w.y}, bodyB: wb, length: 0, stiffness: 0.4, damping: 0.12}));
+    wb.plugin.con = Constraint.create({bodyA: chassis, pointA: {x: w.x, y: w.y}, bodyB: wb, length: 0, stiffness: 0.4, damping: 0.12});
+    Composite.add(world, wb.plugin.con);
   }
   // rider
   const Lp = p => ({x: ox + p.x, y: oy + p.y});
@@ -1244,6 +1245,17 @@ function tick() {
   if (playing && !G.started && !P.dead && (k.gas || k.brake || k.left || k.right || k.jump || k.special)) G.started = true;
   const alive = !P.dead && !P.ejected && playing && !P.won;
   const ch = P.chassis;
+  if (V.walk && alive) { // walking on what is left of the legs: shorter legs sink the body and slow the stride
+    const con = connectedParts(P), S = P.ch.scale || 1, full = (THIGH + SHIN) * S;
+    const leg = side => {
+      const th = P.parts.find(b => b.plugin.part === 'thigh' && b.plugin.side === side), sh = P.parts.find(b => b.plugin.part === 'shin' && b.plugin.side === side);
+      return con.has(th) ? th.plugin.len + (con.has(sh) ? sh.plugin.len : 0) : 0;
+    };
+    const lb = leg('B'), lf = leg('F'), longest = Math.max(lb, lf);
+    P.walkDrop = Math.min(37, full - longest);
+    P.walkPace = Math.min(lb, lf) >= full * 0.95 ? 1 : Math.min(lb, lf) > 0 ? 0.55 : longest > 0 ? 0.4 : 0.22;
+    for (const w of P.wheels) { const c = w.plugin.con; c.pointA = rot({x: w.plugin.wheel.x, y: w.plugin.wheel.y - P.walkDrop}, ch.angle); c.angleA = ch.angle; }
+  }
   // drive
   if (alive) {
     const gas = k.gas, brake = k.brake;
@@ -1251,7 +1263,8 @@ function tick() {
       if (!w.plugin.wheel.drive) continue;
       const r = w.plugin.wheel.r;
       let target = null;
-      if (gas) target = V.speed / r; else if (brake) target = -V.speed * 0.45 / r;
+      const spd = V.speed * (V.walk ? P.walkPace || 1 : 1);
+      if (gas) target = spd / r; else if (brake) target = -spd * 0.45 / r;
       if (target !== null && (target > 0 ? w.angularVelocity < target : w.angularVelocity > target)) Body.setAngularVelocity(w, w.angularVelocity + (target - w.angularVelocity) * V.torque);
       else if (brake === false) Body.setAngularVelocity(w, w.angularVelocity * 0.995);
     }
@@ -1266,7 +1279,7 @@ function tick() {
       const a = P.wheels[0].angle * 0.9;
       for (const c of P.attach) if (c.plugin.name === 'pedalB' || c.plugin.name === 'pedalF') {
         const ph = a + (c.plugin.name === 'pedalB' ? Math.PI : 0);
-        const loc = {x: Math.sin(ph) * 13, y: V.foot.y - Math.max(0, Math.cos(ph)) * 8};
+        const loc = {x: Math.sin(ph) * 13, y: V.foot.y - (P.walkDrop || 0) - Math.max(0, Math.cos(ph)) * 8};
         c.pointA = rot(loc, ch.angle); c.angleA = ch.angle;
       }
     }
@@ -1280,7 +1293,7 @@ function tick() {
     }
     if (V.balance) { // she keeps herself upright like a person would
       const a = Math.atan2(Math.sin(ch.angle), Math.cos(ch.angle)) - ld * 0.25;
-      Body.setAngularVelocity(ch, ch.angularVelocity * 0.88 - a * V.balance);
+      Body.setAngularVelocity(ch, ch.angularVelocity * (V.walk ? 0.6 : 0.88) - a * V.balance);
       if (Math.abs(a) > 1.1 && P.wheels.some(w => G.tick - w.plugin.groundT < 3)) Body.setVelocity(ch, {x: ch.velocity.x, y: Math.min(ch.velocity.y, -1.5)});
     }
     // jump (every vehicle) and special
@@ -1299,7 +1312,7 @@ function tick() {
     P.boost -= STEP;
     const d = rot({x: 1, y: 0}, ch.angle);
     const pw = P.boostPow || 0.32;
-    for (const b of P.all) if (b.plugin.vehicle) Body.setVelocity(b, {x: b.velocity.x + d.x * pw, y: b.velocity.y + d.y * pw});
+    if (!P.boostCap || vlen(ch.velocity) < P.boostCap) for (const b of P.all) if (b.plugin.vehicle) Body.setVelocity(b, {x: b.velocity.x + d.x * pw, y: b.velocity.y + d.y * pw});
     if (P.ch.veh === 'clio') { // backfire flames and black smoke from the exhaust
       const ex = add(ch.position, rot({x: -60, y: 7}, ch.angle));
       G.particles.push({x: ex.x, y: ex.y, vx: -d.x * 4 + rnd(-1, 1), vy: rnd(-1, 0.5), life: 0.25, max: 0.25, r: rnd(4, 7), c: ['#ffd23c', '#ff8a2a'][G.tick % 2], g: 0});
@@ -1348,7 +1361,9 @@ function tick() {
       if (m.b.plugin.gone) continue;
       if (m.crashed && (m.crashT = (m.crashT || 0) + STEP) > 2.5) { // wreck cleared from the road
         m.b.plugin.gone = true; Composite.remove(eng.world, m.b);
-        for (let i = 0; i < 16; i++) G.particles.push({x: m.b.position.x + rnd(-40, 40), y: m.b.position.y + rnd(-15, 15), vx: rnd(-1, 1), vy: rnd(-1.5, -0.3), life: 1, max: 1, r: 7, c: 'rgba(90,90,90,.5)', g: -0.02, grow: 0.3});
+        explode(m.b.position.x, m.b.position.y, 150, 9, 12); // the wreck goes up in flames: close enough and it hurts
+        for (let i = 0; i < 24; i++) G.particles.push({x: m.b.position.x + rnd(-45, 45), y: m.b.position.y + rnd(-15, 15), vx: rnd(-6, 6), vy: rnd(-8, -2), life: rnd(0.8, 1.6), max: 1.6, r: rnd(2, 5), c: ['#3a3a3a', m.b.plugin.col, '#c9ccd1'][i % 3]});
+        for (let i = 0; i < 16; i++) G.particles.push({x: m.b.position.x + rnd(-40, 40), y: m.b.position.y + rnd(-15, 15), vx: rnd(-1, 1), vy: rnd(-1.5, -0.3), life: 1.4, max: 1.4, r: 9, c: 'rgba(60,60,60,.5)', g: -0.02, grow: 0.35});
         continue;
       }
       if (G.started && !m.crashed && m.x - P.torso.position.x < 1800) m.x -= m.speed * eng.timing.timeScale;
@@ -1429,13 +1444,13 @@ function tick() {
 function special(P) {
   const V = P.V; P.cd = V.cd;
   const grounded = P.wheels.some(w => G.tick - w.plugin.groundT < 3);
-  P.boostPow = 0.32;
+  P.boostPow = 0.32; P.boostCap = 0;
   if (P.ch.veh === 'ragazza') { P.boost = 0.7; Snd.boost(); }
   else if (P.ch.veh === 'bici') { P.armor = 4; Snd.tone(110, 0.5, 'sawtooth', 0.08, 220); } else if (P.ch.veh === 'eauto') { P.fix = 1.6; Snd.tone(660, 0.25, 'sine', 0.08, 990); }
   else if (P.ch.veh === 'suv') { G.engine.timing.timeScale = 0.4; G.slowT = 2.8; Snd.whistle(); }
   else if (P.ch.veh === 'clio') { P.boost = 0.8; Snd.boom(0.45); }
   else if (P.ch.veh === 'moto') shoot(P);
-  else if (P.ch.veh === 'carriola') { P.boost = 2.4; P.boostPow = 0.55; P.drunk = 4.5; Snd.tone(520, 0.3, 'sine', 0.1, 260); Snd.boost(); }
+  else if (P.ch.veh === 'carriola') { P.boost = 1.5; P.boostPow = 0.4; P.boostCap = 16; P.drunk = 4.5; Snd.tone(520, 0.3, 'sine', 0.1, 260); Snd.boost(); }
   else if (P.ch.veh === 'piedi') fart(P);
 }
 
@@ -1454,7 +1469,7 @@ function blood(x, y, n) {
   for (let i = 0; i < n; i++) G.particles.push({x, y, vx: rnd(-3.5, 3.5), vy: rnd(-5, 1), life: rnd(0.8, 1.6), max: 1.6, r: rnd(1.5, 3.5), c: i % 3 ? '#b3121b' : '#7e0c12', stain: true});
 }
 
-function explode(x, y, R, pw) {
+function explode(x, y, R, pw, dmg = 7) {
   for (const b of Composite.allBodies(G.engine.world)) {
     if (b.isStatic) continue;
     const d = sub(b.position, {x, y}), l = vlen(d);
@@ -1463,7 +1478,7 @@ function explode(x, y, R, pw) {
     Body.setVelocity(b, {x: b.velocity.x + n.x * k, y: b.velocity.y + n.y * k - k * 0.4});
   }
   const P = G.player;
-  for (const part of [P.head, P.torso]) if (vlen(sub(part.position, {x, y})) < R * 0.45) damage(P, part, 7, part.position, null);
+  for (const part of [P.head, P.torso]) if (vlen(sub(part.position, {x, y})) < R * 0.45) damage(P, part, dmg, part.position, null);
   for (let i = 0; i < 26; i++) G.particles.push({x, y, vx: rnd(-4, 4), vy: rnd(-5, 1), life: rnd(0.3, 0.7), max: 0.7, r: rnd(3, 7), c: ['#ffd23c', '#ff8a2a', '#e0302a'][i % 3], g: 0.05});
   for (let i = 0; i < 10; i++) G.particles.push({x, y, vx: rnd(-1.5, 1.5), vy: rnd(-2, -0.5), life: 1.2, max: 1.2, r: 6, c: 'rgba(80,80,80,.45)', g: -0.02, grow: 0.3});
   Snd.boom();
@@ -2125,7 +2140,9 @@ function drawLimb(b, ch, back) {
   }
   if (p.part === 'shin') {
     if (ch.id === 'pinciu') { ctx.fillStyle = shade(ch.shirt2, f); ctx.fillRect(-w / 2, -l / 2 + 1, w, 3); }
-    ctx.fillStyle = shade(ch.shoes, f); rr(ctx, -5, l / 2 - 3, 14, 7, 3); ctx.fill();
+    ctx.fillStyle = shade(ch.shoes, f);
+    if (ch.id === 'davidone') { rr(ctx, -5, l / 2 - 9, 14, 13, 3); ctx.fill(); ctx.fillStyle = '#2a1a10'; ctx.fillRect(-5, l / 2 + 1, 14, 3); }
+    else { rr(ctx, -5, l / 2 - 3, 14, 7, 3); ctx.fill(); }
     if (ch.id === 'pinciu') { ctx.fillStyle = '#e8e8e8'; for (let i = 0; i < 3; i++) ctx.fillRect(-3 + i * 4, l / 2 + 3.5, 2, 2); }
   }
   if (p.cut) { ctx.fillStyle = '#9e1119'; ctx.beginPath(); ctx.arc(0, -l / 2, w / 2, 0, TAU); ctx.fill(); }
@@ -2168,7 +2185,12 @@ function drawTorso(b, ch) {
       ctx.fillStyle = ch.hair; for (const [x, y] of [[1, -4], [4, -1], [-1, 1], [3, 3], [0, -7]]) ctx.fillRect(x, y, 1.4, 1.4);
       ctx.fillStyle = ch.pants; ctx.fillRect(-w / 2, l / 2 - 5, w, 8);
     }
-    if (ch.id === 'davidone') { ctx.fillStyle = '#f4ead6'; ctx.font = '700 9px Barlow Condensed, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('XL', 2, -2); }
+    if (ch.id === 'davidone') { // hiking shirt, rucksack and straps
+      ctx.fillStyle = '#c0392b'; rr(ctx, -w / 2 - 8, -l / 2 + 2, 10, l * 0.72, 3); ctx.fill();
+      ctx.fillStyle = '#8f2a20'; ctx.fillRect(-w / 2 - 8, -l / 2 + 8, 10, 3);
+      ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(-w / 2 + 2, -l / 2 + 1); ctx.lineTo(w / 2 - 3, l / 2 - 8); ctx.moveTo(-w / 2 + 2, -2); ctx.lineTo(w / 2 - 2, -2); ctx.stroke();
+      ctx.fillStyle = '#4a6630'; ctx.fillRect(w / 2 - 7, -l / 2 + 7, 5, 6);
+    }
     if (ch.id === 'pinciu') { // yellow-blue football shirt, number 10
       ctx.fillStyle = ch.shirt2; ctx.fillRect(-w / 2, -l / 2 - 3, 4, l + 2);
       ctx.beginPath(); ctx.moveTo(-2, -l / 2 - 3); ctx.lineTo(4, -l / 2 + 4); ctx.lineTo(8, -l / 2 - 3); ctx.fill();
@@ -2230,8 +2252,10 @@ function drawHead(c, ch, r, dead) {
     c.fillStyle = ch.hair; c.beginPath(); c.arc(0, -r * 0.05, r * 1.03, Math.PI * 0.95, Math.PI * 1.9); c.quadraticCurveTo(r * 0.6, -r * 0.75, r * 0.1, -r * 0.6); c.fill();
     c.beginPath(); c.moveTo(-r * 0.3, r * 0.05); c.quadraticCurveTo(-r * 0.2, r * 1.45, r * 0.6, r * 1.15); c.quadraticCurveTo(r * 1.1, r * 0.75, r * 0.95, r * 0.3); c.quadraticCurveTo(r * 0.6, r * 0.6, r * 0.25, r * 0.3); c.fill();
     c.strokeStyle = ch.hair; c.lineWidth = 1.6; c.beginPath(); c.moveTo(r * 0.25, -r * 0.48); c.lineTo(r * 0.7, -r * 0.45); c.stroke();
-  } else if (id === 'davidone') { // short hair, stubble, round cheeks
-    c.fillStyle = ch.hair; c.beginPath(); c.arc(0, -r * 0.05, r * 1.02, Math.PI * 0.95, Math.PI * 1.88); c.fill();
+  } else if (id === 'davidone') { // loose curls, stubble, round cheeks
+    c.fillStyle = ch.hair;
+    for (let a = Math.PI * 0.85; a < Math.PI * 1.95; a += 0.27) { c.beginPath(); c.arc(Math.cos(a) * r * 0.92, Math.sin(a) * r * 0.92, r * 0.27, 0, TAU); c.fill(); }
+    for (const [x, y] of [[-0.35, -0.6], [0.1, -0.7], [-0.6, -0.25]]) { c.beginPath(); c.arc(x * r, y * r, r * 0.3, 0, TAU); c.fill(); }
     c.fillStyle = 'rgba(46,32,24,.25)'; c.beginPath(); c.arc(r * 0.3, r * 0.45, r * 0.55, 0, Math.PI); c.fill();
     c.fillStyle = 'rgba(230,120,100,.35)'; c.beginPath(); c.arc(r * 0.55, r * 0.2, r * 0.18, 0, TAU); c.fill();
   } else if (id === 'pinciu') {
@@ -2844,7 +2868,7 @@ function refreshMenu() {
   });
   const ch = CHARS[G.charIdx], V = VEHS[ch.veh];
   $('charInfo').innerHTML = '';
-  $('charInfo').append(ch.info + ' Mossa speciale: ', Object.assign(document.createElement('em'), {textContent: V.special}), ', ' + V.sdesc + '.');
+  $('charInfo').append('Mossa speciale: ', Object.assign(document.createElement('em'), {textContent: V.special}), ', ' + V.sdesc + '.');
 }
 function saveSel() { store('bw-sel', {c: G.charIdx, l: G.levelIdx}); }
 
