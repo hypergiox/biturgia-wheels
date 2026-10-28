@@ -1597,30 +1597,45 @@ function gibNpc(b, vel) {
   blood(p.x, p.y - 8, 60);
   Snd.crunch(1); Snd.boom(0.35); Snd.lastScream = 0; Snd.scream(rnd(140, 280), 0.6);
 }
-// Shared records on your own server (see server/README.md). Off when api is empty; the copy in sito/ sets it to '/api'.
-// GET  {api}/scores?level=<id>  -> [{n, c, t}, ...] best 10, fastest first
-// POST {api}/scores  {level, n, c, t}  -> 201
+// Shared records outside claude.ai. Two backends, both off by default:
+//  - your own server (server/README.md): ONLINE.api = '/api'
+//    GET {api}/scores?level=<id> -> [{n, c, t}, ...]   POST {api}/scores {level, n, c, t}
+//  - Firebase Firestore, called over REST (FIREBASE.md): fill FIREBASE.projectId and FIREBASE.apiKey
+//    records live at levels/<level id>/scores/<auto id> = {n, c, t}
 const ONLINE = {api: ''};
+const FIREBASE = {projectId: 'biturgiawheels', apiKey: 'AIzaSyDAMyZb8iCzB0AlLXxckVfgNsWvs7njl48'};
 const Online = {
-  on: !!ONLINE.api, cache: {},
+  fb: !!(FIREBASE.projectId && FIREBASE.apiKey), cache: {},
+  get on() { return this.fb || !!ONLINE.api; },
+  fbUrl(path) { return 'https://firestore.googleapis.com/v1/projects/' + encodeURIComponent(FIREBASE.projectId) + '/databases/(default)/documents/' + path + '?key=' + encodeURIComponent(FIREBASE.apiKey); },
+  async top(id) {
+    if (this.fb) {
+      const r = await fetch(this.fbUrl('levels/' + id + ':runQuery'), {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({structuredQuery: {from: [{collectionId: 'scores'}], orderBy: [{field: {fieldPath: 't'}, direction: 'ASCENDING'}], limit: 10}})});
+      if (!r.ok) throw new Error(r.status);
+      return (await r.json()).filter(x => x.document).map(x => { const f = x.document.fields || {}; return {n: f.n && f.n.stringValue, c: f.c && f.c.stringValue, t: Number(f.t && (f.t.doubleValue ?? f.t.integerValue))}; });
+    }
+    const r = await fetch(ONLINE.api + '/scores?level=' + encodeURIComponent(id), {headers: {Accept: 'application/json'}});
+    if (!r.ok) throw new Error(r.status);
+    return r.json();
+  },
+  async push(id, e) {
+    const r = this.fb
+      ? await fetch(this.fbUrl('levels/' + id + '/scores'), {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({fields: {n: {stringValue: e.n}, c: {stringValue: e.c}, t: {doubleValue: e.t}}})})
+      : await fetch(ONLINE.api + '/scores', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({level: id, n: e.n, c: e.c, t: e.t})});
+    if (!r.ok) throw new Error(r.status);
+  },
   async load(id) {
     if (!this.on || Shared.ready) return;
     try {
-      const r = await fetch(ONLINE.api + '/scores?level=' + encodeURIComponent(id), {headers: {Accept: 'application/json'}});
-      if (!r.ok) throw new Error(r.status);
-      this.cache[id] = (await r.json()).filter(validEntry).slice(0, 10);
+      this.cache[id] = (await this.top(id)).filter(validEntry).slice(0, 10);
       this.failed = false;
       if (G.state === 'menu') refreshMenu();
     } catch (e) { this.failed = true; }
   },
   loadAll() { for (const lv of LEVELS) this.load(lv.id); },
   async add(id, e) {
-    try {
-      const r = await fetch(ONLINE.api + '/scores', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({level: id, n: e.n, c: e.c, t: e.t})});
-      if (!r.ok) throw new Error(r.status);
-      await this.load(id);
-      return true;
-    } catch (err) { return false; }
+    try { await this.push(id, e); await this.load(id); return true; } catch (err) { return false; }
   }
 };
 function fart(P) { // Davidone's beans: a second jump, even mid-air
