@@ -276,6 +276,7 @@ const VEHS = {
 
 const TORSO = 32, HEADR = 10, UARM = 16, LARM = 16, THIGH = 19, SHIN = 19;
 const GROUP = -7;
+const VOICE = {vina: 175, raspo: 125, piero: 115, pinciu: 150, alex: 165, gumi: 190, capa: 235, davidone: 100}; // scream pitch per rider
 const CAT_VEHICLE = 0x0008, CAT_RIDER = 0x0002, RIDER_ONLY = {category: 0x0004, mask: 0x0002}; // hazards that only hurt people, like in Happy Wheels
 
 /* ================= track builder ================= */
@@ -340,7 +341,7 @@ const LEVELS = [
       L.deco(4800, 'servi', 0.6); L.sign(4850, t.y, 'Santa Maria dei Servi');
       L.gap(t, 210, 70, 'spikes');
       t.flat(200);
-      for (let i = 0; i < 4; i++) { t.r(0, -8); t.flat(50); }
+      for (let i = 0; i < 4; i++) { t.r(18, -8); t.flat(40); }
       t.flat(300);
       L.deco(6100, 'campanile', 0.55); L.deco(6260, 'duomo', 0.6); L.sign(6200, t.y, 'Cattedrale');
       L.bell(t.x - 150, t.y, 190, 2.4, 0.85);
@@ -380,7 +381,7 @@ const LEVELS = [
       L.spinner(t.x - 120, t.y, -2.6);
       L.gap(t, 200, 60, 'spikes');
       t.flat(200); L.barrel(t.x - 120, t.y); L.barrel(t.x - 80, t.y);
-      for (let i = 0; i < 4; i++) { t.r(0, -8); t.flat(50); }
+      for (let i = 0; i < 4; i++) { t.r(18, -8); t.flat(40); }
       t.flat(400);
       L.deco(3300, 'duomo', 0.6); L.deco(3480, 'campanile', 0.55);
       L.spinner(t.x - 200, t.y, 2.8);
@@ -636,6 +637,32 @@ const LEVELS = [
       L.deco(t.x - 750, 'sanleo', 0.65);
       for (const x of [700, 1500, 2300, 3100, 3900, 4700, 5500, 6300, 7100, 7900, 8700, 9500, 10300]) L.npc(x, groundAt2(t, x), 'paesano');
       L.finishAt(t.x - 650, t.y);
+    }},
+  {id: 'cadutone', name: 'Il Cadutone', place: 'Il salto nel fiume: un imbuto di roccia fino alla pozza',
+    sky: ['#7fc0e6', '#d9f0f7'], mount: '#7fa0b0', mount2: '#5f8a4f',
+    ground: {fill: '#6b6258', top: '#8a8074', dash: '#a99f92'},
+    build(L) {
+      const t = L.track(-700, 0);
+      t.flat(1000); L.spawnAt(-250);
+      L.sign(-120, t.y, 'Il Cadutone');
+      L.sign(220, t.y, 'Vietato tuffarsi');
+      L.deco(-500, 'pine', 0.8); L.deco(-380, 'cypress', 0.8);
+      // left face: near-vertical drops with ever shorter ledges
+      t.r(30, 500); t.r(150, 18);
+      t.r(30, 450); t.r(110, 14);
+      t.r(25, 420); t.r(80, 10);
+      t.r(20, 470);
+      // the pool at the bottom
+      t.r(10, 250); const p1 = t.x; t.flat(150); const p2 = t.x; t.r(10, -250);
+      // right face climbing back out, wider and wider: the funnel
+      t.r(55, -480); t.r(130, -490); t.r(200, -500); t.r(320, -520); t.flat(700);
+      const surf = groundAt2(t, p1 + 1) - 235;
+      L.water(p1 - 12, p2 + 12, surf);
+      L.pool(p1 - 12, p2 + 12, surf);
+      // branches and boulders sticking out of the walls
+      L.ledge(1035, 1150, 170, 0.25); L.ledge(890, 1650, 80, -0.2); L.ledge(1230, 640, 150, 0.15);
+      L.boulder(560, 760, 26); L.boulder(930, 1390, 22);
+      for (const x of [-560, -440, 120]) L.npc(x, groundAt2(t, x), 'bagnante');
     }}
 ];
 
@@ -722,7 +749,7 @@ function makeBuilder(engine) {
   };
   L.cannon = (x, _y, period) => L.spawners.push({type: 'cannon', x, period, t: period * 0.5});
   L.conveyor = (x, gy, w, speed) => {
-    const b = addB(Bodies.rectangle(x + w / 2, gy + 4, w, 16, {isStatic: true, friction: 1}));
+    const b = addB(Bodies.rectangle(x + w / 2, gy + 8, w, 16, {isStatic: true, friction: 1}));
     b.plugin.kind = 'conveyor'; b.plugin.w = w; b.plugin.h = 16; b.plugin.conveyor = speed; L.dyn.push(b);
   };
   L.seesaw = (x, gy, len) => { // pivot right of centre, so the near end rests on the ground until you pass it
@@ -751,7 +778,7 @@ function makeBuilder(engine) {
   L.cart = (x, gy) => L.box(x, gy - 17, 46, 30, 'cart', {density: 0.0006, friction: 0.02, frictionStatic: 0});
   L.cans = (x, gy, rows) => { for (let r = 0; r < rows; r++) for (let i = 0; i < rows - r; i++) L.box(x + i * 15 + r * 7.5, gy - 9.5 - r * 18, 14, 17, 'can', {density: 0.0004}); };
   L.wet = (x, gy, w) => { // slippery floor: no grip at all
-    const b = addB(Bodies.rectangle(x + w / 2, gy - 1, w, 6, {isStatic: true, friction: 0, frictionStatic: 0}));
+    const b = addB(Bodies.rectangle(x + w / 2, gy + 2, w, 6, {isStatic: true, friction: 0, frictionStatic: 0}));
     b.plugin.kind = 'wet'; b.plugin.w = w; b.plugin.h = 6; L.dyn.push(b); L.deco(x - 30, 'wetsign', 1);
   };
   L.parked = (x, gy, col) => {
@@ -766,20 +793,27 @@ function makeBuilder(engine) {
     b.plugin.kind = 'traffic'; b.plugin.col = col; b.plugin.w = 96; b.plugin.h = 44; L.dyn.push(b);
     const m = {type: 'car', b, x0, x1, x: x0, speed}; b.plugin.mover = m; L.movers.push(m);
   };
+  L.pool = (x1, x2, y) => { L.finish = {x: x1, y, pool: {x1, x2, y}}; };
+  L.ledge = (x, y, w, a) => { const b = addB(Bodies.rectangle(x, y, w, 14, {isStatic: true, angle: a, chamfer: {radius: 6}, friction: 0.8})); b.plugin.kind = 'branch'; b.plugin.w = w; b.plugin.h = 14; L.dyn.push(b); };
+  L.boulder = (x, y, r) => { const b = addB(Bodies.circle(x, y, r, {isStatic: true, friction: 0.8})); b.plugin.kind = 'boulder'; b.plugin.r = r; L.dyn.push(b); };
   L.trigger = (x, fn) => L.triggers.push({x, fn, done: false});
   return L;
 }
 
+// Ground is a row of convex columns, one per surface segment, reaching far down. Neighbouring columns share
+// their top corners exactly, so wheels roll across the joins without catching on lips or seams.
 function terrainBodies(world, lines) {
-  const T = 60;
+  let deep = -Infinity;
+  for (const pts of lines) for (const p of pts) deep = Math.max(deep, p.y);
+  deep += 600;
   for (const pts of lines) {
     for (let i = 0; i < pts.length - 1; i++) {
       const p = pts[i], q = pts[i + 1];
-      const dx = q.x - p.x, dy = q.y - p.y, l = Math.hypot(dx, dy);
-      if (l < 0.5) continue;
-      const a = Math.atan2(dy, dx), n = {x: -Math.sin(a), y: Math.cos(a)};
-      const c = {x: (p.x + q.x) / 2 + n.x * T / 2, y: (p.y + q.y) / 2 + n.y * T / 2};
-      const b = Bodies.rectangle(c.x, c.y, l + 2, T, {isStatic: true, angle: a, friction: 0.9, label: 'ground'});
+      if (q.x - p.x < 0.5) continue; // vertical faces come from the neighbouring column's side
+      const verts = [{x: p.x, y: p.y}, {x: q.x, y: q.y}, {x: q.x, y: deep}, {x: p.x, y: deep}];
+      const c = Matter.Vertices.centre(verts);
+      const b = Bodies.fromVertices(c.x, c.y, [verts], {isStatic: true, friction: 0.9, label: 'ground'});
+      Body.setPosition(b, {x: b.position.x + (p.x - b.vertices.reduce((m, v) => Math.min(m, v.x), Infinity)), y: b.position.y + (Math.min(p.y, q.y) - b.vertices.reduce((m, v) => Math.min(m, v.y), Infinity))});
       b.plugin.ground = true;
       Composite.add(world, b);
     }
@@ -900,12 +934,14 @@ function breakJoint(P, name, at) {
   const pos = at || j.child.position;
   blood(pos.x, pos.y, 26);
   Snd.crunch(1);
+  Snd.scream(VOICE[P.ch.id] || 160, name === 'neck' ? 1.1 : 0.75);
   j.child.plugin.cut = true;
   return true;
 }
 function kill(P, cause) {
   if (P.dead || P.won) return;
   P.dead = true; P.cause = cause;
+  Snd.scream((VOICE[P.ch.id] || 160) * 0.9, 1.1);
   eject(P);
   G.deadAt = G.time;
 }
@@ -1034,6 +1070,7 @@ function hit(self, other, pr) {
 /* ================= people on foot ================= */
 const NPC = {
   paesano: {h: 46, speed: 0.9, knock: 4.5, downT: 3, lines: ['Rallenta!', 'Ma \'ndo vai?', 'Piano, bischero!', 'Ti fo la multa!', 'Ai miei tempi...']},
+  bagnante: {h: 44, speed: 0, knock: 4, downT: 2, lines: ['Buttati!', 'Vai di bomba!', 'Che tuffo!', 'Non ce la fai!']},
   kid: {h: 40, speed: 2.6, knock: 5, downT: 2, lines: ['Oh, bella!', 'Dove corri?', 'Fermati!', 'Ma che fai?', 'Eh oh!', 'Daje!']},
   zombie: {h: 48, speed: 1.5, knock: 6, downT: 2.6, lines: ['Grrr...', 'Pastaaa...', 'Sfogliaaa...', 'Mmmh...']},
   hippie: {h: 46, speed: 1.0, knock: 4.5, downT: 3, lines: ['Peace and love!', 'Fate l\'amore, non la guerra!', 'Un abbraccio?', 'Che vibrazioni!']},
@@ -1091,6 +1128,7 @@ function npcTick(b, P) {
   n.dir = Math.sign(dx) || 1;
   let want = dist < 750 && dist > 10 ? n.dir * def.speed : 0;
   if (n.type === 'hippie') want *= 0.6 + 0.4 * Math.sin(n.t * 3);
+  if (n.type === 'bagnante' && dist < 500 && n.cd <= 0 && Math.random() < 0.01) { say(n); n.cd = 3; }
   if (n.type === 'shopper' && !n.thrown && dx < 0 && dist < 400) { // shove a trolley at the rider
     const cart = G.L.dyn.find(c => c.plugin.kind === 'cart' && !c.plugin.gone && Math.abs(c.position.x - b.position.x) < 110 && Math.abs(c.velocity.x) < 1);
     if (cart) { Body.setVelocity(cart, {x: -7.5, y: -0.5}); n.thrown = true; say(n); }
@@ -1216,6 +1254,15 @@ function drawNPC(b) {
       ctx.strokeStyle = '#7a4f2a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(8, 10); ctx.lineTo(10, 34); ctx.stroke();
       ctx.restore();
     }
+  } else if (n.type === 'bagnante') { // swimmer cheering on the dive
+    leg(Math.PI, '#e8b892', '#2a6fb0'); leg(0, '#e8b892', '#2a6fb0');
+    ctx.fillStyle = '#e8b892'; rr(ctx, -9, -h / 2 + 12, 18, h * 0.42, 5); ctx.fill();
+    ctx.fillStyle = ['#d2302a', '#1f6fb0', '#f0b43c'][n.var % 3]; ctx.fillRect(-9, -h / 2 + 12 + h * 0.36, 18, 7);
+    ctx.fillStyle = '#e8b892'; ctx.beginPath(); ctx.arc(1, -h / 2 + 7, 7.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3a2618'; ctx.beginPath(); ctx.arc(0, -h / 2 + 5, 8, Math.PI * 0.9, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111'; ctx.fillRect(1, -h / 2 + 4, 8, 3);
+    const up = Math.sin(n.t * 6) * 0.4;
+    ctx.save(); ctx.translate(2, -h / 2 + 15); ctx.rotate(-2.2 + up); ctx.strokeStyle = '#e8b892'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(14, 0); ctx.stroke(); ctx.restore();
   } else if (n.type === 'guard') {
     leg(Math.PI, '#1d2a44', '#111'); leg(0, '#25345a', '#111');
     ctx.fillStyle = '#25345a'; rr(ctx, -10, -h / 2 + 12, 20, h * 0.5, 4); ctx.fill();
@@ -1428,7 +1475,10 @@ function tick() {
   // fall off the world
   if (P.torso.position.y > G.bounds.maxY + 900) kill(P, 'Fuori mappa: di ' + P.ch.name + ' non c\'è più traccia.');
   // finish
-  if (playing && !P.dead && !P.won && G.L.finish && P.torso.position.x > G.L.finish.x) win(P);
+  if (playing && !P.dead && !P.won && G.L.finish) {
+    const f = G.L.finish, tp = P.torso.position;
+    if (f.pool ? tp.x > f.pool.x1 && tp.x < f.pool.x2 && tp.y > f.pool.y + 6 : tp.x > f.x) win(P);
+  }
   if (playing && P.dead && !G.msgShown && G.time - G.deadAt > 1.4) showDeath(P.cause);
   $('hint').hidden = !(playing && P.ejected && !P.dead && !P.won);
   // particles
@@ -1528,7 +1578,7 @@ function crawl(P, k) {
 }
 
 // hit hard enough, a person on foot comes apart
-const NPC_COL = {kid: '#3d3d46', zombie: '#e9e6dd', hippie: '#e0302a', comunista: '#c0262d', shopper: '#7a8fa0', guard: '#25345a', paesano: '#6b5a4a'};
+const NPC_COL = {bagnante: '#d2302a', kid: '#3d3d46', zombie: '#e9e6dd', hippie: '#e0302a', comunista: '#c0262d', shopper: '#7a8fa0', guard: '#25345a', paesano: '#6b5a4a'};
 function gibNpc(b, vel) {
   const n = b.plugin.npc;
   if (n.state === 'gibbed') return;
@@ -1545,7 +1595,7 @@ function gibNpc(b, vel) {
     G.L.stumps.push({b: g, l: {x: 0, y: pc.r ? pc.r : pc.h / 2}, gush: 1.6});
   }
   blood(p.x, p.y - 8, 60);
-  Snd.crunch(1); Snd.boom(0.35);
+  Snd.crunch(1); Snd.boom(0.35); Snd.lastScream = 0; Snd.scream(rnd(140, 280), 0.6);
 }
 // Shared records on your own server (see server/README.md). Off when api is empty; the copy in sito/ sets it to '/api'.
 // GET  {api}/scores?level=<id>  -> [{n, c, t}, ...] best 10, fastest first
@@ -1588,7 +1638,8 @@ function render() {
   const look = clamp(P.chassis.velocity.x * 14, -120, 220);
   const tx = t.x + look + (G.state === 'menu' ? -W * 0.18 / s * (W > 700 ? 1 : 0) : W * 0.06 / s);
   const ty = t.y - 40 + (P.drunk > 0 ? Math.sin(G.tick * 0.09) * 18 : 0);
-  G.cam.x = lerp(G.cam.x, tx, 0.08); G.cam.y = lerp(G.cam.y, ty, 0.08);
+  const fall = P.torso.velocity.y;
+  G.cam.x = lerp(G.cam.x, tx, 0.08); G.cam.y = lerp(G.cam.y, ty + clamp(fall * 10, -60, 260), Math.abs(fall) > 6 ? 0.2 : 0.08);
   const cam = G.cam;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   // sky
@@ -1770,6 +1821,12 @@ function drawProp(b) {
     ctx.fillStyle = '#9aa0a6'; ctx.fillRect(10, -h / 2 - 18, 18, 14);
     ctx.fillStyle = '#3a3a40'; ctx.fillRect(-4, -h / 2 - 40, 3, 34);
     ctx.fillStyle = '#d2302a'; ctx.fillRect(-12, -h / 2 - 54, 20, 16); ctx.fillStyle = '#f4f4f4'; ctx.font = '700 11px Barlow Condensed, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(1 + Math.floor(hash(b.id) * 9)), -2, -h / 2 - 45.5);
+  } else if (k === 'branch') {
+    ctx.fillStyle = '#6b4626'; rr(ctx, -w / 2, -h / 2, w, h, 6); ctx.fill();
+    ctx.fillStyle = '#4f7a3a'; for (const x of [-w / 3, 0, w / 3]) { ctx.beginPath(); ctx.arc(x, -h / 2 - 4, 8, 0, TAU); ctx.fill(); }
+  } else if (k === 'boulder') {
+    const r = b.plugin.r; ctx.fillStyle = '#857a6c'; ctx.beginPath(); ctx.arc(0, 0, r, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.beginPath(); ctx.arc(-r * 0.3, -r * 0.3, r * 0.4, 0, TAU); ctx.fill();
   } else if (k === 'gib') {
     ctx.fillStyle = b.plugin.col;
     if (b.plugin.r) { ctx.beginPath(); ctx.arc(0, 0, b.plugin.r, 0, TAU); ctx.fill(); ctx.fillStyle = '#9e1119'; ctx.beginPath(); ctx.arc(0, b.plugin.r - 1, 3, 0, TAU); ctx.fill(); }
@@ -1871,6 +1928,14 @@ function drawSign(sg) {
 }
 
 function drawFinish(f) {
+  if (f.pool) { // floating finish line across the pool
+    const {x1, x2, y} = f.pool;
+    ctx.strokeStyle = '#f4ead6'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x1, y - 4); ctx.lineTo(x2, y - 4); ctx.stroke();
+    for (let x = x1 + 8; x < x2; x += 16) { ctx.fillStyle = (x / 16 | 0) % 2 ? '#d2553a' : '#f4ead6'; ctx.beginPath(); ctx.arc(x, y - 4 + Math.sin(G.tick * 0.08 + x) * 1.5, 5, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = '#d2553a'; ctx.fillRect((x1 + x2) / 2 - 40, y - 70, 80, 20);
+    ctx.fillStyle = '#f4ead6'; ctx.font = '400 12px Bowlby One, Arial Black, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('ARRIVO', (x1 + x2) / 2, y - 60);
+    return;
+  }
   const gy = groundAt(f.x);
   ctx.save(); ctx.translate(f.x, gy);
   ctx.fillStyle = '#3a3a3a'; ctx.fillRect(-4, -170, 8, 170); ctx.fillRect(116, -170, 8, 170);
@@ -2547,6 +2612,25 @@ const Snd = {
     g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
     o.connect(g).connect(this.ac.destination); o.start(t); lfo.start(t); o.stop(t + 0.6); lfo.stop(t + 0.6);
   },
+  // a cartoon "AAAH": a buzzy voice through two vowel formants, pitch rising then falling
+  scream(pitch = 170, len = 0.7) {
+    if (!this.on || !this.ac) return;
+    const now = this.ac.currentTime;
+    if (now - (this.lastScream || 0) < 0.45) return;
+    this.lastScream = now;
+    const t = now, o = this.ac.createOscillator(), vib = this.ac.createOscillator(), vg = this.ac.createGain(), out = this.ac.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(pitch, t); o.frequency.linearRampToValueAtTime(pitch * 1.6, t + len * 0.25); o.frequency.exponentialRampToValueAtTime(pitch * 0.85, t + len);
+    vib.frequency.value = 7; vg.gain.value = pitch * 0.05; vib.connect(vg).connect(o.frequency);
+    out.gain.setValueAtTime(0.0001, t); out.gain.exponentialRampToValueAtTime(0.32, t + 0.04); out.gain.setValueAtTime(0.32, t + len * 0.7); out.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    for (const [f, q, v] of [[800, 6, 1], [1250, 8, 0.7], [2600, 10, 0.25]]) {
+      const bp = this.ac.createBiquadFilter(), g = this.ac.createGain();
+      bp.type = 'bandpass'; bp.frequency.value = f * (pitch > 200 ? 1.15 : 1); bp.Q.value = q; g.gain.value = v;
+      o.connect(bp).connect(g).connect(out);
+    }
+    out.connect(this.ac.destination);
+    o.start(t); vib.start(t); o.stop(t + len + 0.05); vib.stop(t + len + 0.05);
+  },
   bonk() { this.tone(170, 0.14, 'square', 0.1, 80); },
   win() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.22, 'square', 0.06), i * 120)); }
 };
@@ -2814,7 +2898,8 @@ function buildNameBox() {
 }
 function win(P) {
   P.won = true; Snd.win();
-  for (let i = 0; i < 40; i++) G.particles.push({x: G.L.finish.x + rnd(0, 120), y: groundAt(G.L.finish.x) - 170, vx: rnd(-3, 3), vy: rnd(-4, 1), life: rnd(1, 2), max: 2, r: 3, c: ['#f0b43c', '#d2553a', '#f4ead6', '#86cdb9'][i % 4], g: 0.12});
+  const fy = G.L.finish.pool ? G.L.finish.pool.y - 60 : groundAt(G.L.finish.x) - 170;
+  for (let i = 0; i < 40; i++) G.particles.push({x: G.L.finish.x + rnd(0, 120), y: fy, vx: rnd(-3, 3), vy: rnd(-4, 1), life: rnd(1, 2), max: 2, r: 3, c: ['#f0b43c', '#d2553a', '#f4ead6', '#86cdb9'][i % 4], g: 0.12});
   const t = G.time, id = G.level.id, rec = qualifies(id, t), B = boardOf(id);
   const first = !B.length || t < B[0].t;
   G.pendingTime = t;
