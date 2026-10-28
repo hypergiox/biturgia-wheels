@@ -682,7 +682,7 @@ const LEVELS = [
       L.boulder(560, 760, 26); L.boulder(930, 1390, 22);
       for (const x of [-560, -440, 120]) L.npc(x, groundAt2(t, x), 'bagnante');
     }},
-  {id: 'e45', name: 'E45', place: 'Da Sansepolcro a Città di Castello, con un\'auto nera alle calcagna',
+  {id: 'superstrada', name: 'E45', place: 'Da Sansepolcro a Città di Castello, con un\'auto nera alle calcagna',
     sky: ['#9bb7cf', '#e2e6e0'], mount: '#8f9fae', mount2: '#6f8a5c',
     ground: {fill: '#5d4a36', top: '#3f4146', dash: '#f4f4f4'},
     build(L) {
@@ -1374,6 +1374,12 @@ function tick() {
     P.walkPace = Math.min(lb, lf) >= full * 0.95 ? 1 : Math.min(lb, lf) > 0 ? 0.55 : longest > 0 ? 0.4 : 0.22;
     for (const w of P.wheels) { const c = w.plugin.con; c.pointA = rot({x: w.plugin.wheel.x, y: w.plugin.wheel.y - P.walkDrop}, ch.angle); c.angleA = ch.angle; }
   }
+  if (V.balance && !P.dead && !P.ejected && !P.won) { // self-balancing riders and walkers stay upright, also in the menu preview
+    const ld = alive ? (k.right ? 1 : 0) - (k.left ? 1 : 0) : 0;
+    const a = Math.atan2(Math.sin(ch.angle), Math.cos(ch.angle)) - ld * 0.25;
+    Body.setAngularVelocity(ch, ch.angularVelocity * (V.balDamp || (V.walk ? 0.6 : 0.88)) - a * V.balance);
+    if (Math.abs(a) > 1.1 && P.wheels.some(w => G.tick - w.plugin.groundT < 3)) Body.setVelocity(ch, {x: ch.velocity.x, y: Math.min(ch.velocity.y, -1.5)});
+  }
   // drive
   if (alive) {
     const gas = k.gas, brake = k.brake;
@@ -1418,18 +1424,14 @@ function tick() {
         c.pointA = rot(loc, ch.angle); c.angleA = ch.angle;
       }
     }
-    if (V.balance) { // she keeps herself upright like a person would
-      const a = Math.atan2(Math.sin(ch.angle), Math.cos(ch.angle)) - ld * 0.25;
-      Body.setAngularVelocity(ch, ch.angularVelocity * (V.balDamp || (V.walk ? 0.6 : 0.88)) - a * V.balance);
-      if (Math.abs(a) > 1.1 && P.wheels.some(w => G.tick - w.plugin.groundT < 3)) Body.setVelocity(ch, {x: ch.velocity.x, y: Math.min(ch.velocity.y, -1.5)});
-    }
     // jump (every vehicle) and special
     P.jumpCd = (P.jumpCd || 0) - STEP;
     if (k.jump && P.jumpCd <= 0 && P.wheels.some(w => G.tick - w.plugin.groundT < 4)) {
       for (const b of P.all) Body.setVelocity(b, {x: b.velocity.x, y: Math.min(b.velocity.y, 0) - 7.2});
       P.jumpCd = 0.6; Snd.boing();
     }
-    if (k.special && P.cd <= 0) special(P);
+    if (k.special && P.cd <= 0 && (!P.specialHeld || P.ch.veh === 'moto')) special(P);
+    P.specialHeld = !!k.special;
     if (k.eject) eject(P, 'manual');
   }
   if (playing && P.ejected && !P.dead && !P.won) crawl(P, k);
