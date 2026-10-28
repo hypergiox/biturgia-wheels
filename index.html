@@ -2,7 +2,12 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1d1a2b">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Biturgia Wheels">
 <title>Biturgia Wheels</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -23,7 +28,8 @@
   color-scheme: dark;
 }
 [hidden]{display:none!important}
-html,body{height:100%;margin:0;overflow:hidden;background:var(--ink);color:var(--paper);font-family:var(--body);font-size:17px}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--ink);color:var(--paper);font-family:var(--body);font-size:17px;overscroll-behavior:none;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+html.touch body{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 canvas#game{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
 button{font-family:var(--body);font-weight:700;letter-spacing:.04em;cursor:pointer}
 button:focus-visible{outline:3px solid var(--ochre);outline-offset:2px}
@@ -33,7 +39,7 @@ button:focus-visible{outline:3px solid var(--ochre);outline-offset:2px}
   background:linear-gradient(180deg,rgba(29,26,43,.97),rgba(29,26,43,.92));border-right:3px solid var(--ochre);
   padding-block:calc(18px + env(safe-area-inset-top,0px)) calc(24px + env(safe-area-inset-bottom,0px));
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:16px;display:flex;flex-direction:column;gap:18px}
-.logo{font-family:var(--display);font-size:clamp(34px,9vw,46px);line-height:.9;margin:0;color:var(--ochre);text-wrap:balance;
+.logo{font-family:var(--display);font-size:clamp(30px,9vw,46px);line-height:.9;margin:0;color:var(--ochre);text-wrap:balance;
   text-shadow:3px 3px 0 var(--brick)}
 .logo small{display:block;font-family:var(--body);font-size:16px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-shadow:none;margin-top:8px}
 .sec h2{font-family:var(--body);font-size:14px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:700}
@@ -54,6 +60,7 @@ button:focus-visible{outline:3px solid var(--ochre);outline-offset:2px}
 .lv[aria-pressed="true"]{border-color:var(--ochre);background:var(--panel-2)}
 .play{font-family:var(--display);font-size:26px;background:var(--brick);color:var(--paper);border:0;border-radius:6px;padding:12px;box-shadow:0 4px 0 #8f3322}
 .play:active{transform:translateY(3px);box-shadow:0 1px 0 #8f3322}
+#btnPlay{position:sticky;bottom:0;z-index:1;flex:none}
 .keys{font-size:15px;color:var(--muted);line-height:1.5;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:0}
 .keys dt{color:var(--paper);font-weight:700}
 .keys dd{margin:0}
@@ -72,7 +79,7 @@ kbd{font-family:var(--body);background:var(--panel-2);border:1px solid var(--lin
 .hbtn{background:var(--panel);color:var(--paper);border:2px solid var(--line);border-radius:6px;padding:6px 10px;font-size:15px;pointer-events:auto}
 
 /* ---------- messages ---------- */
-#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(380px,calc(100% - 32px));box-sizing:border-box;background:rgba(29,26,43,.95);
+#msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(380px,calc(100% - 32px));max-height:calc(100% - 16px);overflow-y:auto;box-sizing:border-box;background:rgba(29,26,43,.95);
   border:3px solid var(--ochre);border-radius:8px;padding:18px;text-align:center;display:flex;flex-direction:column;gap:10px}
 #msg h3{font-family:var(--display);font-size:34px;margin:0;color:var(--ochre);line-height:1}
 #msg p{margin:0;font-size:18px;line-height:1.3}
@@ -100,13 +107,13 @@ kbd{font-family:var(--body);background:var(--panel-2);border:1px solid var(--lin
 #splash{position:fixed;inset:0;z-index:50;display:grid;place-items:center;overflow:hidden;
   background:radial-gradient(ellipse at 50% 38%,#3a2f52 0%,#1d1a2b 62%,#120f1b 100%);
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.sp-in{display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;max-width:100%}
-.sp-logo{position:relative;font-family:var(--display);font-size:clamp(48px,13vw,120px);line-height:.88;color:var(--ochre);text-shadow:5px 5px 0 var(--brick),10px 10px 0 rgba(0,0,0,.35);transform:rotate(-4deg)}
+.sp-in{display:flex;flex-direction:column;align-items:center;gap:clamp(8px,2.6vh,18px);text-align:center;max-width:100%}
+.sp-logo{position:relative;font-family:var(--display);font-size:clamp(40px,min(13vw,15vh),120px);line-height:.88;color:var(--ochre);text-shadow:.045em .045em 0 var(--brick),.09em .09em 0 rgba(0,0,0,.35);transform:rotate(-4deg)}
 .sp-logo span{display:block}
 .drip{position:absolute;top:96%;width:9px;height:var(--h);background:#b3121b;border-radius:0 0 6px 6px;transform-origin:top;animation:drip 2.6s var(--d) ease-in infinite}
 .drip::after{content:"";position:absolute;bottom:-6px;left:-2px;width:13px;height:13px;border-radius:50%;background:#b3121b}
 @keyframes drip{0%{transform:scaleY(.2)}60%{transform:scaleY(1)}100%{transform:scaleY(1)}}
-#spCast{width:min(780px,100%);height:auto}
+#spCast{width:min(780px,100%,calc(22vh * 780 / 112));height:auto}
 #spStart{font-size:28px;padding:14px 26px;animation:pulse 1.3s ease-in-out infinite}
 @keyframes pulse{50%{transform:scale(1.06)}}
 .sp-note{margin:0;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;font-size:14px;font-weight:600}
@@ -119,12 +126,62 @@ kbd{font-family:var(--body);background:var(--panel-2);border:1px solid var(--lin
 .gen{margin:0;font-size:14px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 
 /* ---------- touch ---------- */
-#touch{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;pointer-events:none;
+#touch{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:flex-end;pointer-events:none;
   padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-#touch .grp{display:flex;gap:10px;pointer-events:auto}
-#touch button{width:64px;height:64px;border-radius:50%;background:rgba(38,34,56,.75);border:2px solid var(--line);color:var(--paper);font-size:15px;touch-action:none;user-select:none;-webkit-user-select:none}
+#touch .grp{display:flex;gap:12px;pointer-events:auto;align-items:flex-end}
+#touch .pads{display:grid;grid-template-columns:auto auto;gap:10px 12px;align-items:center;justify-items:center}
+#touch button{width:64px;height:64px;border-radius:50%;background:rgba(38,34,56,.72);border:2px solid var(--line);color:var(--paper);font-size:14px;letter-spacing:0;padding:0;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#touch button.sm{width:54px;height:54px;font-size:13px}
+#touch .arrows button{width:72px;height:72px;font-size:22px}
 #touch button.on{background:var(--ochre);color:var(--ink)}
-#touch button.big{width:76px;height:76px;font-size:17px}
+#touch button.big{width:80px;height:80px;font-size:18px}
+#rotate{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;box-sizing:border-box;text-align:center;background:rgba(18,15,27,.94)}
+#rotate b{font-family:var(--display);font-size:28px;font-weight:400;color:var(--ochre);line-height:1.05}
+#rotate p{margin:0;font-size:18px;color:var(--muted);max-width:22em}
+#rotate .ph{width:46px;height:78px;border:4px solid var(--paper);border-radius:9px;animation:turn 2.2s ease-in-out infinite}
+@keyframes turn{0%,25%{transform:rotate(0)}55%,100%{transform:rotate(-90deg)}}
+html.portrait-play #rotate{display:flex}
+.touch-only{display:none}
+html.touch .touch-only{display:block}
+html.touch .kb-only{display:none}
+.tkeys{margin:0;font-size:15px;color:var(--muted);line-height:1.45}
+.tkeys b{color:var(--paper)}
+/* phones held sideways: everything shrinks to leave room for the scene */
+@media (max-height:520px){
+  #menu{width:min(600px,100%);gap:10px;padding-top:calc(10px + env(safe-area-inset-top,0px))}
+  .logo{font-size:30px}
+  .chars{grid-template-columns:repeat(5,1fr);gap:6px}
+  .card{flex-direction:column;gap:2px;padding:5px 2px;text-align:center}
+  .card canvas{width:34px;height:34px}
+  .card b{font-size:15px}
+  .card span{display:none}
+  .charinfo{min-height:0;font-size:15px;margin-top:6px}
+  .levels{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .lv{padding:5px 8px;grid-template-columns:24px 1fr}
+  .lv b{font-size:16px}
+  .lv .pl{display:none}
+  .lv .best{grid-column:2;font-size:13px}
+  .lv .n{font-size:17px;grid-row:auto}
+  .play{font-size:22px;padding:8px}
+  #hud{padding-top:calc(6px + env(safe-area-inset-top,0px))}
+  .hud-box{padding:3px 8px}
+  #hudLevel{font-size:12px}
+  #hudTime{font-size:18px}
+  #hudSpecial{font-size:12px}
+  .meter{width:70px;height:7px}
+  .hbtn{padding:4px 8px;font-size:13px}
+  #touch{padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
+  #touch .arrows button{width:62px;height:62px}
+  #touch button{width:56px;height:56px;font-size:13px}
+  #touch button.sm{width:48px;height:48px;font-size:12px}
+  #touch button.big{width:68px;height:68px;font-size:16px}
+  #touch .pads{gap:6px 10px}
+  #msg{padding:12px;gap:8px}
+  #msg h3{font-size:26px}
+  .slot .ltr{font-size:36px}
+  #hint{bottom:calc(84px + env(safe-area-inset-bottom,0px));font-size:14px}
+}
+@media (prefers-reduced-motion: reduce){#rotate .ph{animation:none;transform:rotate(-90deg)}}
 @media (prefers-reduced-motion: reduce){.play:active{transform:none}}
 </style>
 
@@ -155,9 +212,10 @@ kbd{font-family:var(--body);background:var(--panel-2);border:1px solid var(--lin
 
 <div id="hint" hidden>A piedi: frecce per strisciare, Spazio per un saltello, R per riprovare</div>
 <div id="touch" hidden>
-  <div class="grp"><button type="button" data-k="left" aria-label="Inclina indietro">&#9664;</button><button type="button" data-k="right" aria-label="Inclina avanti">&#9654;</button></div>
-  <div class="grp"><button type="button" data-k="special">Speciale</button><button type="button" data-k="jump">Salta</button><button type="button" data-k="brake">Freno</button><button type="button" class="big" data-k="gas">Gas</button></div>
+  <div class="grp arrows"><button type="button" data-k="left" aria-label="Inclina indietro">&#9664;</button><button type="button" data-k="right" aria-label="Inclina avanti">&#9654;</button></div>
+  <div class="grp pads"><button type="button" class="sm" data-k="special">Mossa</button><button type="button" class="sm" data-k="jump">Salta</button><button type="button" data-k="brake">Freno</button><button type="button" class="big" data-k="gas">Gas</button></div>
 </div>
+<div id="rotate" role="alert"><div class="ph" aria-hidden="true"></div><b>Gira il telefono</b><p>Biturgia Wheels si gioca in orizzontale. La partita è in pausa finché non lo giri.</p></div>
 
 <div id="splash" role="dialog" aria-label="Schermata iniziale">
   <div class="sp-in">
@@ -182,7 +240,11 @@ kbd{font-family:var(--body);background:var(--panel-2);border:1px solid var(--lin
     <div class="levels" id="levels"></div>
   </section>
   <button class="play" id="btnPlay" type="button">Parti!</button>
-  <div class="cmds">
+  <section class="sec touch-only">
+    <h2>Comandi touch</h2>
+    <p class="tkeys"><b>Gas</b> e <b>Freno</b> per andare e frenare (tenuto, retromarcia). <b>&#9664; &#9654;</b> inclinano il veicolo, in aria lo fanno girare. <b>Salta</b> salta, <b>Mossa</b> usa la mossa speciale. A piedi: <b>&#9664; &#9654;</b> per strisciare, <b>Salta</b> per un saltello. Più arti hai perso, più vai piano.</p>
+  </section>
+  <div class="cmds kb-only">
     <section class="sec">
       <h2>Comandi: veicolo</h2>
       <dl class="keys">
@@ -202,7 +264,7 @@ kbd{font-family:var(--body);background:var(--panel-2);border:1px solid var(--lin
       </dl>
     </section>
   </div>
-  <p class="gen"><kbd>R</kbd> riprova &middot; <kbd>Esc</kbd> menu &middot; <kbd>M</kbd> musica <button type="button" class="hbtn" id="menuMusic">Musica: sì</button></p>
+  <p class="gen"><span class="kb-only"><kbd>R</kbd> riprova &middot; <kbd>Esc</kbd> menu &middot; <kbd>M</kbd> musica</span> <button type="button" class="hbtn" id="menuMusic">Musica: sì</button></p>
 </aside>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
@@ -782,9 +844,21 @@ const G = {state: 'menu', charIdx: 0, levelIdx: 0, keys: {}, tick: 0, time: 0, p
 const S = store('bw-sel');
 if (S) { G.charIdx = clamp(S.c | 0, 0, CHARS.length - 1); G.levelIdx = clamp(S.l | 0, 0, LEVELS.length - 1); }
 
+let TOUCH = false;
+function setTouch() { // phones and tablets: on-screen pads, touch wording, landscape-only play
+  if (TOUCH) return;
+  TOUCH = true; document.documentElement.classList.add('touch');
+  $('spStart').textContent = 'Tocca per giocare';
+  $('hint').textContent = 'A piedi: ◀ ▶ per strisciare, Salta per un saltello, Riprova in alto';
+  const nh = document.querySelector('#nameBox .nhint'); if (nh) nh.textContent = 'Tocca le frecce sopra e sotto le lettere, poi Salva';
+  if (G.state === 'play') $('touch').hidden = false;
+  resize();
+}
 function resize() {
-  DPR = Math.min(2, window.devicePixelRatio || 1);
+  DPR = Math.min(TOUCH ? 1.5 : 2, window.devicePixelRatio || 1); // phones: lighter canvas keeps the frame rate up
   W = window.innerWidth; H = window.innerHeight;
+  G.portrait = TOUCH && H > W;
+  document.documentElement.classList.toggle('portrait-play', G.portrait && G.state === 'play');
   canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
   G.scale = clamp(Math.min(H / 560, W / 780), 0.45, 1.7);
 }
@@ -1978,7 +2052,7 @@ function drawPadsLoops() {
     ctx.lineWidth = 3; ctx.strokeStyle = '#7d8187'; ctx.beginPath(); ctx.arc(C.x, C.y, R + 26, 0, TAU); ctx.stroke();
   }
 }
-const VERSION = 'v1.16';
+const VERSION = 'v1.17';
 // sound effects supplied for the game (mp3, embedded so the single file works anywhere)
 const SFX_DATA = {
   male1: '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',
@@ -2046,7 +2120,7 @@ function render() {
   const t = P.torso.position;
   const look = clamp(P.chassis.velocity.x * 14, -120, 220);
   const tx = t.x + look + (G.state === 'menu' ? -W * 0.18 / s * (W > 700 ? 1 : 0) : W * 0.06 / s);
-  const ty = t.y - 40 + (P.drunk > 0 ? Math.sin(G.tick * 0.09) * 18 : 0);
+  const ty = t.y - 40 + (TOUCH && G.state === 'play' ? H * 0.1 / s : 0) + (P.drunk > 0 ? Math.sin(G.tick * 0.09) * 18 : 0);
   const fall = P.torso.velocity.y;
   G.cam.x = lerp(G.cam.x, tx, 0.08); G.cam.y = lerp(G.cam.y, ty + clamp(fall * 10, -60, 260), Math.abs(fall) > 6 ? 0.2 : 0.08);
   const cam = G.cam;
@@ -3506,7 +3580,9 @@ function startGame() {
   Snd.init();
   G.state = 'play';
   $('menu').hidden = true; $('hud').hidden = false;
-  $('touch').hidden = !matchMedia('(pointer: coarse)').matches;
+  $('touch').hidden = !TOUCH;
+  if (TOUCH) goFullscreen();
+  resize();
   $('hudLevel').textContent = G.level.name + ' · ' + CHARS[G.charIdx].name;
   loadLevel(G.levelIdx, G.charIdx);
   $('hudLevel').textContent = G.level.name + ' · ' + CHARS[G.charIdx].name;
@@ -3516,7 +3592,12 @@ function startGame() {
 function toMenu() {
   G.state = 'menu'; hideMsg(); $('hint').hidden = true;
   $('menu').hidden = false; $('hud').hidden = true; $('touch').hidden = true;
-  refreshMenu(); loadLevel(G.levelIdx, G.charIdx);
+  resize(); refreshMenu(); loadLevel(G.levelIdx, G.charIdx);
+}
+function goFullscreen() { // Android: hide the browser bars and hold landscape; iPhone Safari has no fullscreen, it just skips
+  const d = document.documentElement;
+  if (document.fullscreenElement || !d.requestFullscreen) return;
+  d.requestFullscreen({navigationUI: 'hide'}).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape')).catch(() => {});
 }
 function restart() { if (G.state === 'play') { loadLevel(G.levelIdx, G.charIdx); } }
 
@@ -3540,7 +3621,12 @@ window.addEventListener('keydown', e => {
   Snd.init();
 });
 window.addEventListener('keyup', e => { const k = KEYMAP[e.code]; if (k) G.keys[k] = false; });
-window.addEventListener('blur', () => { G.keys = {}; });
+function releaseKeys() { G.keys = {}; document.querySelectorAll('#touch button.on').forEach(b => b.classList.remove('on')); }
+window.addEventListener('blur', releaseKeys);
+document.addEventListener('visibilitychange', () => { if (document.hidden) releaseKeys(); });
+window.addEventListener('touchstart', setTouch, {passive: true, once: true});
+document.addEventListener('contextmenu', e => { if (TOUCH) e.preventDefault(); }); // long-press on the pads must not open a menu
+document.addEventListener('gesturestart', e => e.preventDefault()); // iOS pinch-zoom
 document.querySelectorAll('#touch button').forEach(b => {
   const k = b.dataset.k;
   const on = e => { e.preventDefault(); G.keys[k] = true; b.classList.add('on'); Snd.init(); try { b.setPointerCapture(e.pointerId); } catch (err) {} };
@@ -3553,6 +3639,7 @@ let last = performance.now(), acc = 0;
 function frame(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now; acc += dt;
   let n = 0;
+  if (G.portrait && G.state === 'play') acc = 0; // paused until the phone is turned sideways
   while (acc >= STEP && n < 5) { tick(); acc -= STEP; n++; }
   if (n === 5) acc = 0;
   render();
@@ -3560,6 +3647,7 @@ function frame(now) {
 }
 buildMenu();
 buildNameBox();
+if (matchMedia('(pointer: coarse)').matches) setTouch();
 $('spNote').textContent = 'Sansepolcro · ' + CHARS.length + ' piloti · ' + LEVELS.length + ' percorsi · nessuna pietà';
 Online.loadAll();
 drawCast(); syncMusicBtns();
